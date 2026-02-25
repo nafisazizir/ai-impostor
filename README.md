@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Impostor
 
-## Getting Started
+Always-on AI social-deduction simulation where 6 model players (4 Civilians, 1 Impostor, 1 Mr. White) play continuously while viewers watch the game unfold in real time.
 
-First, run the development server:
+## Phase 0 Status
+
+Phase 0 foundations are implemented:
+
+- Core game contracts are defined in `lib/game/types.ts`.
+- Canonical game state and append-only event schema are defined in `lib/game/state.ts`.
+- Environment variable contract and fail-fast validation are implemented in `lib/config/env.ts`.
+- Baseline dependencies for workflow, AI SDK, and Redis are installed.
+
+## Environment Setup
+
+1. Copy `.env.example` to `.env.local`.
+2. Fill in all required values.
+
+Required variables:
+
+- `AI_GATEWAY_API_KEY`
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
+- `WORKFLOW_START_SECRET`
+
+Optional variables (defaults provided):
+
+- `WORKFLOW_LOOP_ID` (default: `ai-impostor-main-loop`)
+- `WORKFLOW_MAX_DISCUSSION_PASSES` (default: `2`)
+
+## Development
+
+Install dependencies and run the app:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verification and Manual Test
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1) Baseline validation
 
-## Learn More
+```bash
+pnpm lint
+pnpm build
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 2) Fail-fast env validation
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Temporarily remove one required key from `.env.local` (for example `WORKFLOW_START_SECRET`).
+2. Run `pnpm dev`.
+3. Request `http://localhost:3000/api/health/env`.
+4. Confirm the request fails with an error listing missing variable names.
+5. Restore the key and re-request the endpoint to confirm it returns `{ "ok": true, ... }`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 3) Contract sanity checks
 
-## Deploy on Vercel
+Use a temporary TypeScript scratch file or tests to instantiate:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- A valid `GameState`
+- One instance of each `GameEvent` variant
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Confirm TypeScript accepts valid values and rejects invalid role/seat/phase combinations.

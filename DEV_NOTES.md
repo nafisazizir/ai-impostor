@@ -58,6 +58,22 @@ Checkpoint:
 - Type contracts compile and are used by tests/stubs.
 - Missing env configuration fails fast with clear errors.
 
+### Status (Implemented)
+
+- Added core contracts in `lib/game/types.ts` for roles, seats, votes, eliminations, and outcomes.
+- Added canonical state/event contracts in `lib/game/state.ts` with append-only event handling and basic guards.
+- Added environment contract in `lib/config/env.ts` and example values in `.env.example`.
+- Added baseline dependencies for workflow, AI SDK, and Upstash Redis in `package.json`.
+
+Phase 1 remains next: deterministic game engine transitions and tests.
+
+### Manual Verification Checklist
+
+1. Run `pnpm lint` and `pnpm build` and confirm success.
+2. Remove one required env key from `.env.local`, run `pnpm dev`, then request `/api/health/env` and verify a clear missing-key error is returned.
+3. Restore the missing env key and verify `/api/health/env` returns success JSON.
+4. In a TypeScript scratch/test file, instantiate one `GameState` and each `GameEvent` variant to confirm type contracts are usable and strict.
+
 ## Phase 1 — Deterministic Game Engine (No AI)
 
 Goal: validate game rules independently from model behavior.
