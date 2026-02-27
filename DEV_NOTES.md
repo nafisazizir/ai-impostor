@@ -65,7 +65,8 @@ Checkpoint:
 - Added environment contract in `lib/config/env.ts` and example values in `.env.example`.
 - Added baseline dependencies for workflow, AI SDK, and Upstash Redis in `package.json`.
 
-Phase 1 remains next: deterministic game engine transitions and tests.
+Phase 1 is now implemented in `lib/game/engine.ts` + `lib/game/engine.test.ts`.
+Next implementation target is a Phase 2 demo slice: durable workflow orchestration with hardcoded game actions (no Redis/AI yet).
 
 ### Manual Verification Checklist
 
@@ -101,6 +102,20 @@ Checkpoint:
 ## Phase 2 — Durable Workflow Orchestration
 
 Goal: map engine transitions to durable, retryable workflow steps.
+
+### Status (Demo Slice Implemented)
+
+- Added workflow integration in `next.config.ts` via `withWorkflow(...)`.
+- Added deterministic demo policy in `lib/game/demo-policy.ts`.
+- Added durable demo workflow and step boundaries in:
+  - `workflows/demo-game.ts`
+  - `workflows/demo-game-steps.ts`
+- Added API routes to trigger and inspect demo workflow runs:
+  - `app/api/workflows/demo/start/route.ts`
+  - `app/api/workflows/demo/run/route.ts`
+- Added policy tests in `lib/game/demo-policy.test.ts`.
+
+Remaining Phase 2 items (Redis checkpoints and AI-driven steps) are intentionally deferred.
 
 Steps:
 

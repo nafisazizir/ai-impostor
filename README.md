@@ -2,14 +2,24 @@
 
 Always-on AI social-deduction simulation where 6 model players (4 Civilians, 1 Impostor, 1 Mr. White) play continuously while viewers watch the game unfold in real time.
 
-## Phase 0 Status
+## Current Status
 
-Phase 0 foundations are implemented:
+Implemented:
 
 - Core game contracts are defined in `lib/game/types.ts`.
 - Canonical game state and append-only event schema are defined in `lib/game/state.ts`.
 - Environment variable contract and fail-fast validation are implemented in `lib/config/env.ts`.
-- Baseline dependencies for workflow, AI SDK, and Redis are installed.
+- Deterministic game engine transitions and win-condition branches are implemented and tested in `lib/game/engine.test.ts`.
+- Phase 2 demo workflow is implemented with hardcoded decisions in:
+  - `workflows/demo-game.ts`
+  - `workflows/demo-game-steps.ts`
+  - `app/api/workflows/demo/start/route.ts`
+  - `app/api/workflows/demo/run/route.ts`
+
+Deferred for later phases:
+
+- Redis checkpoint persistence
+- AI model integrations (host + per-seat model calls)
 
 ## Environment Setup
 
@@ -67,3 +77,27 @@ Use a temporary TypeScript scratch file or tests to instantiate:
 - One instance of each `GameEvent` variant
 
 Confirm TypeScript accepts valid values and rejects invalid role/seat/phase combinations.
+
+### 4) Demo workflow run (end-to-end)
+
+1. Start the app with `pnpm dev`.
+2. Trigger the demo workflow:
+
+```bash
+curl -X POST http://localhost:3000/api/workflows/demo/start \
+  -H "Content-Type: application/json" \
+  -H "x-workflow-start-secret: $WORKFLOW_START_SECRET" \
+  --data '{}'
+```
+
+3. Copy the returned `runId`, then poll status:
+
+```bash
+curl "http://localhost:3000/api/workflows/demo/run?runId=<RUN_ID>"
+```
+
+Expected behavior:
+
+- Initial responses may show `{ "ok": true, "status": "running", ... }`.
+- Terminal response shows `{ "ok": true, "status": "completed", "result": { ... } }`.
+- `result.finalState.currentPhase` is `"finished"` and `result.outcome` is non-null.
