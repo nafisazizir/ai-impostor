@@ -44,9 +44,12 @@ Open `http://localhost:3000`.
 ### 1) Baseline validation
 
 ```bash
+pnpm test
 pnpm lint
 pnpm build
 ```
+
+`pnpm test` runs deterministic game-engine unit tests in `lib/game/engine.test.ts`.
 
 ### 2) Fail-fast env validation
 

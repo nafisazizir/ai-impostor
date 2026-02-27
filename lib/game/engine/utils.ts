@@ -1,0 +1,71 @@
+import type { GameState } from "@/lib/game/state";
+import type { RolesBySeat, SeatNumber } from "@/lib/game/types";
+
+import type { Rng, TimestampFactory } from "@/lib/game/engine/types";
+
+export function timestamp(now: TimestampFactory): string {
+  return now();
+}
+
+export function orderedAliveSeats(state: GameState): SeatNumber[] {
+  return state.seatOrder.filter((seat) => state.aliveSeats.includes(seat));
+}
+
+export function nextExpectedSeat(state: GameState, actedSeats: SeatNumber[]): SeatNumber {
+  const ordered = orderedAliveSeats(state);
+  const expected = ordered[actedSeats.length];
+  if (!expected) {
+    throw new Error("All alive seats have already acted in this phase.");
+  }
+
+  return expected;
+}
+
+export function assertActorTurn(state: GameState, seat: SeatNumber, actedSeats: SeatNumber[]): void {
+  const expected = nextExpectedSeat(state, actedSeats);
+  if (seat !== expected) {
+    throw new Error(`Out-of-order action. Expected seat ${expected}, received ${seat}.`);
+  }
+}
+
+export function shuffleInPlace<T>(values: T[], rng: Rng): T[] {
+  for (let i = values.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [values[i], values[j]] = [values[j], values[i]];
+  }
+
+  return values;
+}
+
+export function cloneVotesByRound(votesByRound: GameState["votesByRound"]): GameState["votesByRound"] {
+  return Object.fromEntries(
+    Object.entries(votesByRound).map(([round, votes]) => [Number(round), [...votes]]),
+  );
+}
+
+export function cloneCluesByRound(cluesByRound: GameState["cluesByRound"]): GameState["cluesByRound"] {
+  return Object.fromEntries(
+    Object.entries(cluesByRound).map(([round, clues]) => [Number(round), [...clues]]),
+  );
+}
+
+export function cloneDiscussionByRound(
+  discussionByRound: GameState["discussionByRound"],
+): GameState["discussionByRound"] {
+  return Object.fromEntries(
+    Object.entries(discussionByRound).map(([round, messages]) => [Number(round), [...messages]]),
+  );
+}
+
+export function assignRoles(
+  seatOrder: SeatNumber[],
+  rolePool: Array<RolesBySeat[SeatNumber]>,
+  rng: Rng,
+): RolesBySeat {
+  const shuffledRoles = shuffleInPlace([...rolePool], rng);
+
+  return seatOrder.reduce<RolesBySeat>((acc, seat, index) => {
+    acc[seat] = shuffledRoles[index];
+    return acc;
+  }, {} as RolesBySeat);
+}
