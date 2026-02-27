@@ -20,3 +20,4 @@ export {
 } from "@/lib/game/engine/resolution";
 export { assertSetupInvariants } from "@/lib/game/engine/invariants";
 export { createSeededRng } from "@/lib/game/engine/rng";
+export { orderedAliveSeats } from "@/lib/game/engine/utils";
