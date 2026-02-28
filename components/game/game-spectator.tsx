@@ -7,6 +7,7 @@ import { deriveActiveSeat } from "@/lib/game/ui-helpers";
 
 import { GameHeader } from "@/components/game/game-header";
 import { SeatRing } from "@/components/game/seat-ring";
+import { ThinkingPanel } from "@/components/game/thinking-panel";
 
 export function GameSpectator({ snapshots }: { snapshots: MockSnapshot[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,50 +27,55 @@ export function GameSpectator({ snapshots }: { snapshots: MockSnapshot[] }) {
     return () => clearInterval(interval);
   }, [autoReplay, next]);
 
-  const { state, label } = snapshots[currentIndex];
+  const { state, label, thinking } = snapshots[currentIndex];
   const activeSeat = deriveActiveSeat(state);
 
   const DEV_BUTTON_CLASS =
     "text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring rounded px-1.5 py-0.5 text-xs touch-manipulation focus-visible:ring-2 focus-visible:ring-offset-1";
 
   return (
-    <div className="flex h-screen flex-col">
-      <GameHeader />
+    <div className="flex h-screen flex-col md:flex-row">
+      {/* Left column: header + game area */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <GameHeader />
 
-      {/* Seat ring + dev controls */}
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
-        <SeatRing state={state} activeSeat={activeSeat} />
+        {/* Seat ring + dev controls */}
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
+          <SeatRing state={state} activeSeat={activeSeat} />
 
-        {/* Dev controls */}
-        <div className="border-border bg-card/50 flex items-center gap-2 rounded-lg border px-3 py-1.5">
-          <span className="text-muted-foreground text-xs tabular-nums">
-            {currentIndex + 1}/{snapshots.length}
-          </span>
-          <span className="text-muted-foreground text-xs">{label}</span>
-          <div className="bg-border mx-1 h-4 w-px" />
-          <button
-            onClick={prev}
-            aria-label="Previous snapshot"
-            className={DEV_BUTTON_CLASS}
-          >
-            Prev
-          </button>
-          <button
-            onClick={next}
-            aria-label="Next snapshot"
-            className={DEV_BUTTON_CLASS}
-          >
-            Next
-          </button>
-          <button
-            onClick={() => setAutoReplay((v) => !v)}
-            aria-label={autoReplay ? "Pause auto-replay" : "Start auto-replay"}
-            className={DEV_BUTTON_CLASS}
-          >
-            {autoReplay ? "Pause" : "Play"}
-          </button>
+          {/* Dev controls */}
+          <div className="border-border bg-card/50 flex items-center gap-2 rounded-lg border px-3 py-1.5">
+            <span className="text-muted-foreground text-xs tabular-nums">
+              {currentIndex + 1}/{snapshots.length}
+            </span>
+            <span className="text-muted-foreground text-xs">{label}</span>
+            <div className="bg-border mx-1 h-4 w-px" />
+            <button
+              onClick={prev}
+              aria-label="Previous snapshot"
+              className={DEV_BUTTON_CLASS}
+            >
+              Prev
+            </button>
+            <button
+              onClick={next}
+              aria-label="Next snapshot"
+              className={DEV_BUTTON_CLASS}
+            >
+              Next
+            </button>
+            <button
+              onClick={() => setAutoReplay((v) => !v)}
+              aria-label={autoReplay ? "Pause auto-replay" : "Start auto-replay"}
+              className={DEV_BUTTON_CLASS}
+            >
+              {autoReplay ? "Pause" : "Play"}
+            </button>
+          </div>
         </div>
       </div>
+
+      <ThinkingPanel thinking={thinking} activeSeat={activeSeat} />
     </div>
   );
 }

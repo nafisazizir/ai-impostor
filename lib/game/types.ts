@@ -77,6 +77,13 @@ export type GameOutcome =
       reason: "final_guess_correct";
     };
 
+export type ThinkingEntry = {
+  seat: SeatNumber;
+  phase: GamePhase;
+  round: number;
+  text: string;
+};
+
 export function isSeatNumber(value: number): value is SeatNumber {
   return Number.isInteger(value) && value >= 1 && value <= PLAYER_COUNT;
 }
