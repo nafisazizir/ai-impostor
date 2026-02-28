@@ -10,8 +10,8 @@ import {
   resolveRound,
   applyElimination,
   resolveMrWhiteGuess,
-  DEFAULT_DISCUSSION_PASSES,
 } from "@/lib/game/engine";
+import { getEnv } from "@/lib/config/env";
 
 import {
   generateWordPair,
@@ -75,6 +75,7 @@ export async function runGame(
   gameId: string,
   options?: RunGameOptions,
 ): Promise<GameRunResult> {
+  const { WORKFLOW_MAX_DISCUSSION_PASSES: maxDiscussionPasses } = getEnv();
   const thinking: ThinkingEntry[] = [];
   let snapshotIndex = 0;
 
@@ -128,7 +129,7 @@ export async function runGame(
     }
 
     // --- Discussion phase ---
-    for (let pass = 1; pass <= DEFAULT_DISCUSSION_PASSES; pass++) {
+    for (let pass = 1; pass <= maxDiscussionPasses; pass++) {
       const aliveForDiscussion = orderedAliveSeats(state);
       console.log(`[${gameId}] Discussion pass ${pass} (${aliveForDiscussion.length} players)`);
       for (const seat of aliveForDiscussion) {
@@ -151,7 +152,7 @@ export async function runGame(
           };
         }
         pushThinking(thinking, seat, state, result, pass);
-        state = submitDiscussionMessage(state, { seat, text: result.output.message });
+        state = submitDiscussionMessage(state, { seat, text: result.output.message }, maxDiscussionPasses);
         console.log(`[${gameId}]   Player ${seat}: "${result.output.message}"`);
         emitSnapshot(`${playerName(seat)} discussed`, state, prev);
       }
