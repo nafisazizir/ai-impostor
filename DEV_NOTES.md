@@ -103,19 +103,10 @@ Checkpoint:
 
 Goal: map engine transitions to durable, retryable workflow steps.
 
-### Status (Demo Slice Implemented)
+### Status (Demo Slice — Removed)
 
-- Added workflow integration in `next.config.ts` via `withWorkflow(...)`.
-- Added deterministic demo policy in `lib/game/demo-policy.ts`.
-- Added durable demo workflow and step boundaries in:
-  - `workflows/demo-game.ts`
-  - `workflows/demo-game-steps.ts`
-- Added API routes to trigger and inspect demo workflow runs:
-  - `app/api/workflows/demo/start/route.ts`
-  - `app/api/workflows/demo/run/route.ts`
-- Added policy tests in `lib/game/demo-policy.test.ts`.
-
-Remaining Phase 2 items (Redis checkpoints and AI-driven steps) are intentionally deferred.
+- Demo workflow scaffolding was built and verified, then removed once replaced by Phase 3 AI layer and Phase 4 spectator UI.
+- Remaining Phase 2 items (Redis checkpoints and AI-driven steps) are intentionally deferred.
 
 Steps:
 
@@ -139,16 +130,20 @@ Checkpoint:
 
 Goal: connect host + six player models through AI Gateway safely.
 
-Steps:
+### Status (Implemented)
 
-- Build model registry with one distinct model per seat + host model.
-- Implement prompts for:
-  - host word-pair generation
-  - civilian clue/discussion/vote behavior
-  - impostor related-word deception behavior
-  - Mr. White unknown-word bluff and final guess behavior
-- Validate outputs (shape and semantics) for each action type.
-- Add guardrails/fallbacks for malformed responses.
+- Added `zod` dependency for structured output schemas.
+- Added Zod output schemas in `lib/ai/schemas.ts` (WordPair, Clue, Discussion, Vote, MrWhiteGuess).
+- Added model registry in `lib/ai/models.ts` mapping 6 players + host to AI Gateway models.
+- Added prompt builders in `lib/ai/prompts.ts` with role-aware information hiding:
+  - Civilians see both words; Impostor sees only impostor word; Mr. White sees neither.
+  - Context builder includes full game history with Player N terminology.
+- Added AI action functions in `lib/ai/actions.ts` using `generateObject()` with native reasoning capture.
+  - Vote action includes semantic retry loop (max 3 attempts) with random fallback.
+- Added game orchestrator in `lib/ai/runner.ts` (`runGame()`) — sequential loop driving engine with AI decisions.
+  - Safety cap at 10 rounds.
+- Added test endpoint `POST /api/game/run` with 5-minute max duration.
+- Added unit tests for schemas (`lib/ai/schemas.test.ts`) and prompts (`lib/ai/prompts.test.ts`).
 
 Checkpoint:
 
@@ -158,6 +153,13 @@ Checkpoint:
 ## Phase 4 — Realtime UX and Streaming
 
 Goal: make every step legible and compelling to watch live.
+
+### Status (Partial — Spectator UI)
+
+- Spectator UI built with mock data: seat ring, thinking panel, game header.
+- Components in `components/game/` (game-spectator, seat-ring, seat-card, thinking-panel, game-header).
+- Driven by `mockSnapshots` from `lib/game/mock-states.ts`.
+- Not yet connected to live AI game data or streaming.
 
 Steps:
 
