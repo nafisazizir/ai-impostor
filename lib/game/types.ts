@@ -81,7 +81,10 @@ export type ThinkingEntry = {
   seat: SeatNumber;
   phase: GamePhase;
   round: number;
+  pass?: number;
+  at: string;
   text: string;
+  actionSummary: string;
 };
 
 export function isSeatNumber(value: number): value is SeatNumber {

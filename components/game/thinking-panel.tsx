@@ -15,6 +15,25 @@ const PHASE_LABEL: Record<string, string> = {
   elimination: "Elimination",
 };
 
+function entryLabel(entry: ThinkingEntry): string {
+  const phase = PHASE_LABEL[entry.phase] ?? entry.phase;
+  if (entry.pass !== undefined) {
+    return `R${entry.round} ${phase} P${entry.pass}`;
+  }
+  return `R${entry.round} ${phase}`;
+}
+
+function shouldShowHeader(entries: ThinkingEntry[], i: number): boolean {
+  if (i === 0) return true;
+  const prev = entries[i - 1];
+  const curr = entries[i];
+  return (
+    prev.seat !== curr.seat ||
+    prev.phase !== curr.phase ||
+    prev.pass !== curr.pass
+  );
+}
+
 export function ThinkingPanel({
   thinking,
   activeSeat,
@@ -58,7 +77,7 @@ export function ThinkingPanel({
             </span>
             {lastEntry && (
               <span className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 font-mono text-[10px] tracking-wider uppercase">
-                {PHASE_LABEL[lastEntry.phase] ?? lastEntry.phase}
+                {entryLabel(lastEntry)}
               </span>
             )}
           </>
@@ -79,21 +98,15 @@ export function ThinkingPanel({
             Waiting for next move...
           </p>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {thinking.map((entry, i) => {
-              const isLatest = i === thinking.length - 1;
               return (
                 <div
                   key={`${entry.seat}-${entry.phase}-${entry.round}-${i}`}
-                  className={cn(
-                    "transition-opacity duration-300",
-                    !isLatest && "opacity-60",
-                  )}
+                  className="transition-opacity duration-300"
                 >
-                  {/* Entry header — only show when speaker changes */}
-                  {(i === 0 ||
-                    thinking[i - 1].seat !== entry.seat ||
-                    thinking[i - 1].phase !== entry.phase) && (
+                  {/* Entry header — show when speaker, phase, or pass changes */}
+                  {shouldShowHeader(thinking, i) && (
                     <div className="mb-1 flex items-center gap-1.5">
                       <Image
                         src={playerLogo(entry.seat)}
@@ -105,15 +118,19 @@ export function ThinkingPanel({
                       <span className="text-muted-foreground font-mono text-xs">
                         {playerName(entry.seat)}
                         <span className="text-muted-foreground/60 ml-2">
-                          R{entry.round}{" "}
-                          {PHASE_LABEL[entry.phase] ?? entry.phase}
+                          {entryLabel(entry)}
                         </span>
                       </span>
                     </div>
                   )}
-                  <p className="font-mono text-xs leading-relaxed whitespace-pre-wrap">
+                  <p className="text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap">
                     {entry.text}
                   </p>
+                  {entry.actionSummary && (
+                    <p className="text-muted-foreground mt-0.5 font-mono text-xs">
+                      {entry.actionSummary}
+                    </p>
+                  )}
                 </div>
               );
             })}

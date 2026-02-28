@@ -126,8 +126,27 @@ function pickReasoning(pool: string[], index: number): string {
   return pool[index % pool.length];
 }
 
-function thinkingEntry(seat: SeatNumber, phase: GamePhase, round: number, text: string): ThinkingEntry {
-  return { seat, phase, round, text };
+type ThinkingOpts = {
+  seat: SeatNumber;
+  phase: GamePhase;
+  round: number;
+  text: string;
+  at: string;
+  actionSummary: string;
+  pass?: number;
+};
+
+function thinkingEntry(opts: ThinkingOpts): ThinkingEntry {
+  const entry: ThinkingEntry = {
+    seat: opts.seat,
+    phase: opts.phase,
+    round: opts.round,
+    at: opts.at,
+    text: opts.text,
+    actionSummary: opts.actionSummary,
+  };
+  if (opts.pass !== undefined) entry.pass = opts.pass;
+  return entry;
 }
 
 export type MockSnapshot = {
@@ -135,7 +154,25 @@ export type MockSnapshot = {
   description: string;
   state: GameState;
   thinking: ThinkingEntry[];
+  newThinkingStartIndex: number;
 };
+
+function pushSnapshot(
+  snapshots: MockSnapshot[],
+  label: string,
+  description: string,
+  state: GameState,
+  thinking: ThinkingEntry[],
+  prevLength: number,
+): void {
+  snapshots.push({
+    label,
+    description,
+    state,
+    thinking: [...thinking],
+    newThinkingStartIndex: prevLength,
+  });
+}
 
 function generateSnapshots(): MockSnapshot[] {
   const now = createNowFactory();
@@ -149,12 +186,7 @@ function generateSnapshots(): MockSnapshot[] {
     now,
   });
 
-  snapshots.push({
-    label: "After Setup",
-    description: "Game just started, waiting for first clue",
-    state,
-    thinking: [...thinking],
-  });
+  pushSnapshot(snapshots, "After Setup", "Game just started, waiting for first clue", state, thinking, 0);
 
   const alive = orderedAliveSeats(state);
   const mrWhiteSeat = alive.find((s) => state.rolesBySeat[s] === "mr_white")!;
@@ -170,71 +202,104 @@ function generateSnapshots(): MockSnapshot[] {
   for (let i = 0; i < 3; i++) {
     const seat = alive[i];
     const role = state.rolesBySeat[seat];
-    thinking = [...thinking, thinkingEntry(seat, "clue", 1, pickReasoning(CLUE_REASONING[role], clueIdx[role]++))];
+    const ts = now();
     if (role === "civilian") civilianIdx++;
-    state = submitClue(state, { seat, text: clueText(role, civilianIdx - (role === "civilian" ? 1 : 0)) }, now);
+    const text = clueText(role, civilianIdx - (role === "civilian" ? 1 : 0));
+    thinking = [...thinking, thinkingEntry({
+      seat, phase: "clue", round: 1, at: ts,
+      text: pickReasoning(CLUE_REASONING[role], clueIdx[role]++),
+      actionSummary: `Gave clue: "${text}"`,
+    })];
+    state = submitClue(state, { seat, text }, () => ts);
   }
 
-  snapshots.push({
-    label: "Mid-Clue",
-    description: "Three players have given clues",
-    state,
-    thinking: [...thinking],
-  });
+  let prev = thinking.length;
+  pushSnapshot(snapshots, "Mid-Clue", "Three players have given clues", state, thinking, prev - 3);
 
   for (let i = 3; i < alive.length; i++) {
     const seat = alive[i];
     const role = state.rolesBySeat[seat];
-    thinking = [...thinking, thinkingEntry(seat, "clue", 1, pickReasoning(CLUE_REASONING[role], clueIdx[role]++))];
+    const ts = now();
     if (role === "civilian") civilianIdx++;
-    state = submitClue(state, { seat, text: clueText(role, civilianIdx - (role === "civilian" ? 1 : 0)) }, now);
+    const text = clueText(role, civilianIdx - (role === "civilian" ? 1 : 0));
+    thinking = [...thinking, thinkingEntry({
+      seat, phase: "clue", round: 1, at: ts,
+      text: pickReasoning(CLUE_REASONING[role], clueIdx[role]++),
+      actionSummary: `Gave clue: "${text}"`,
+    })];
+    state = submitClue(state, { seat, text }, () => ts);
   }
 
   // --- Round 1: Discussion pass 1 ---
   for (let i = 0; i < alive.length; i++) {
-    const role = state.rolesBySeat[alive[i]];
-    thinking = [...thinking, thinkingEntry(alive[i], "discussion", 1, pickReasoning(DISCUSSION_REASONING[role], discIdx[role]++))];
-    state = submitDiscussionMessage(state, { seat: alive[i], text: DISCUSSION_R1_P1[i] }, 2, now);
+    const seat = alive[i];
+    const role = state.rolesBySeat[seat];
+    const ts = now();
+    const msg = DISCUSSION_R1_P1[i];
+    thinking = [...thinking, thinkingEntry({
+      seat, phase: "discussion", round: 1, pass: 1, at: ts,
+      text: pickReasoning(DISCUSSION_REASONING[role], discIdx[role]++),
+      actionSummary: `Said: "${msg}"`,
+    })];
+    state = submitDiscussionMessage(state, { seat, text: msg }, 2, () => ts);
   }
 
   // --- Round 1: Discussion pass 2 (partial) ---
   for (let i = 0; i < 3; i++) {
-    const role = state.rolesBySeat[alive[i]];
-    thinking = [...thinking, thinkingEntry(alive[i], "discussion", 1, pickReasoning(DISCUSSION_REASONING[role], discIdx[role]++))];
-    state = submitDiscussionMessage(state, { seat: alive[i], text: DISCUSSION_R1_P2[i] }, 2, now);
+    const seat = alive[i];
+    const role = state.rolesBySeat[seat];
+    const ts = now();
+    const msg = DISCUSSION_R1_P2[i];
+    thinking = [...thinking, thinkingEntry({
+      seat, phase: "discussion", round: 1, pass: 2, at: ts,
+      text: pickReasoning(DISCUSSION_REASONING[role], discIdx[role]++),
+      actionSummary: `Said: "${msg}"`,
+    })];
+    state = submitDiscussionMessage(state, { seat, text: msg }, 2, () => ts);
   }
 
-  snapshots.push({
-    label: "Mid-Discussion",
-    description: "Second discussion pass underway",
-    state,
-    thinking: [...thinking],
-  });
+  prev = thinking.length;
+  pushSnapshot(snapshots, "Mid-Discussion", "Second discussion pass underway", state, thinking, prev - 3);
 
   for (let i = 3; i < alive.length; i++) {
-    const role = state.rolesBySeat[alive[i]];
-    thinking = [...thinking, thinkingEntry(alive[i], "discussion", 1, pickReasoning(DISCUSSION_REASONING[role], discIdx[role]++))];
-    state = submitDiscussionMessage(state, { seat: alive[i], text: DISCUSSION_R1_P2[i] }, 2, now);
+    const seat = alive[i];
+    const role = state.rolesBySeat[seat];
+    const ts = now();
+    const msg = DISCUSSION_R1_P2[i];
+    thinking = [...thinking, thinkingEntry({
+      seat, phase: "discussion", round: 1, pass: 2, at: ts,
+      text: pickReasoning(DISCUSSION_REASONING[role], discIdx[role]++),
+      actionSummary: `Said: "${msg}"`,
+    })];
+    state = submitDiscussionMessage(state, { seat, text: msg }, 2, () => ts);
   }
 
   // --- Round 1: Votes (partial) ---
   for (let i = 0; i < 3; i++) {
-    const role = state.rolesBySeat[alive[i]];
-    thinking = [...thinking, thinkingEntry(alive[i], "vote", 1, pickReasoning(VOTE_REASONING[role], voteIdx[role]++))];
-    state = submitVote(state, { voterSeat: alive[i], targetSeat: mrWhiteSeat }, now);
+    const seat = alive[i];
+    const role = state.rolesBySeat[seat];
+    const ts = now();
+    thinking = [...thinking, thinkingEntry({
+      seat, phase: "vote", round: 1, at: ts,
+      text: pickReasoning(VOTE_REASONING[role], voteIdx[role]++),
+      actionSummary: `Voted for ${playerName(mrWhiteSeat)}`,
+    })];
+    state = submitVote(state, { voterSeat: seat, targetSeat: mrWhiteSeat }, () => ts);
   }
 
-  snapshots.push({
-    label: "Mid-Vote",
-    description: "Three votes cast, three remaining",
-    state,
-    thinking: [...thinking],
-  });
+  prev = thinking.length;
+  pushSnapshot(snapshots, "Mid-Vote", "Three votes cast, three remaining", state, thinking, prev - 3);
 
   for (let i = 3; i < alive.length; i++) {
-    const role = state.rolesBySeat[alive[i]];
-    thinking = [...thinking, thinkingEntry(alive[i], "vote", 1, pickReasoning(VOTE_REASONING[role], voteIdx[role]++))];
-    state = submitVote(state, { voterSeat: alive[i], targetSeat: mrWhiteSeat }, now);
+    const seat = alive[i];
+    const role = state.rolesBySeat[seat];
+    const ts = now();
+    thinking = [...thinking, thinkingEntry({
+      seat, phase: "vote", round: 1, at: ts,
+      text: pickReasoning(VOTE_REASONING[role], voteIdx[role]++),
+      actionSummary: `Voted for ${playerName(mrWhiteSeat)}`,
+    })];
+    state = submitVote(state, { voterSeat: seat, targetSeat: mrWhiteSeat }, () => ts);
   }
 
   // --- Round 1: Elimination ---
@@ -242,25 +307,22 @@ function generateSnapshots(): MockSnapshot[] {
   state = resolved.state;
   state = applyElimination(state, resolved.result, now);
 
-  snapshots.push({
-    label: "Elimination",
-    description: `${playerName(mrWhiteSeat)} has been eliminated`,
-    state,
-    thinking: [...thinking],
-  });
+  prev = thinking.length;
+  pushSnapshot(snapshots, "Elimination", `${playerName(mrWhiteSeat)} has been eliminated`, state, thinking, prev);
 
   // --- Mr. White guess ---
-  thinking = [...thinking, thinkingEntry(mrWhiteSeat, "elimination", 1, MR_WHITE_GUESS_REASONING)];
-  state = resolveMrWhiteGuess(state, "Lake", now);
+  const guessTs = now();
+  thinking = [...thinking, thinkingEntry({
+    seat: mrWhiteSeat, phase: "elimination", round: 1, at: guessTs,
+    text: MR_WHITE_GUESS_REASONING,
+    actionSummary: `Guessed: "Lake"`,
+  })];
+  state = resolveMrWhiteGuess(state, "Lake", () => guessTs);
 
-  snapshots.push({
-    label: "Mr. White Guess",
-    description: "Mr. White guessed wrong — the game continues",
-    state,
-    thinking: [...thinking],
-  });
+  prev = thinking.length;
+  pushSnapshot(snapshots, "Mr. White Guess", "Mr. White guessed wrong — the game continues", state, thinking, prev - 1);
 
-  // --- Round 2: Fast forward ---
+  // --- Round 2: Clues ---
   const alive2 = orderedAliveSeats(state);
   const clueIdx2: Record<Role, number> = { civilian: 0, impostor: 0, mr_white: 0 };
   const discIdx2: Record<Role, number> = { civilian: 0, impostor: 0, mr_white: 0 };
@@ -269,35 +331,73 @@ function generateSnapshots(): MockSnapshot[] {
   civilianIdx = 0;
   for (const seat of alive2) {
     const role = state.rolesBySeat[seat];
-    thinking = [...thinking, thinkingEntry(seat, "clue", 2, pickReasoning(CLUE_REASONING[role], clueIdx2[role]++))];
+    const ts = now();
     if (role === "civilian") civilianIdx++;
-    state = submitClue(state, { seat, text: clueText(role, civilianIdx - (role === "civilian" ? 1 : 0)) }, now);
+    const text = clueText(role, civilianIdx - (role === "civilian" ? 1 : 0));
+    thinking = [...thinking, thinkingEntry({
+      seat, phase: "clue", round: 2, at: ts,
+      text: pickReasoning(CLUE_REASONING[role], clueIdx2[role]++),
+      actionSummary: `Gave clue: "${text}"`,
+    })];
+    state = submitClue(state, { seat, text }, () => ts);
   }
+
+  prev = thinking.length;
+  pushSnapshot(snapshots, "R2 Clues", "Round 2 clues complete", state, thinking, prev - alive2.length);
+
+  // --- Round 2: Discussion pass 1 ---
   for (let i = 0; i < alive2.length; i++) {
-    const role = state.rolesBySeat[alive2[i]];
-    thinking = [...thinking, thinkingEntry(alive2[i], "discussion", 2, pickReasoning(DISCUSSION_REASONING[role], discIdx2[role]++))];
-    state = submitDiscussionMessage(state, { seat: alive2[i], text: DISCUSSION_R2_P1[i] }, 2, now);
+    const seat = alive2[i];
+    const role = state.rolesBySeat[seat];
+    const ts = now();
+    const msg = DISCUSSION_R2_P1[i];
+    thinking = [...thinking, thinkingEntry({
+      seat, phase: "discussion", round: 2, pass: 1, at: ts,
+      text: pickReasoning(DISCUSSION_REASONING[role], discIdx2[role]++),
+      actionSummary: `Said: "${msg}"`,
+    })];
+    state = submitDiscussionMessage(state, { seat, text: msg }, 2, () => ts);
   }
+
+  // --- Round 2: Discussion pass 2 ---
   for (let i = 0; i < alive2.length; i++) {
-    const role = state.rolesBySeat[alive2[i]];
-    thinking = [...thinking, thinkingEntry(alive2[i], "discussion", 2, pickReasoning(DISCUSSION_REASONING[role], discIdx2[role]++))];
-    state = submitDiscussionMessage(state, { seat: alive2[i], text: DISCUSSION_R2_P2[i] }, 2, now);
+    const seat = alive2[i];
+    const role = state.rolesBySeat[seat];
+    const ts = now();
+    const msg = DISCUSSION_R2_P2[i];
+    thinking = [...thinking, thinkingEntry({
+      seat, phase: "discussion", round: 2, pass: 2, at: ts,
+      text: pickReasoning(DISCUSSION_REASONING[role], discIdx2[role]++),
+      actionSummary: `Said: "${msg}"`,
+    })];
+    state = submitDiscussionMessage(state, { seat, text: msg }, 2, () => ts);
   }
+
+  prev = thinking.length;
+  pushSnapshot(snapshots, "R2 Discussion", "Round 2 discussion complete", state, thinking, prev - alive2.length * 2);
+
+  // --- Round 2: Votes ---
   for (const seat of alive2) {
     const role = state.rolesBySeat[seat];
-    thinking = [...thinking, thinkingEntry(seat, "vote", 2, pickReasoning(VOTE_REASONING[role], voteIdx2[role]++))];
-    state = submitVote(state, { voterSeat: seat, targetSeat: impostorSeat }, now);
+    const ts = now();
+    thinking = [...thinking, thinkingEntry({
+      seat, phase: "vote", round: 2, at: ts,
+      text: pickReasoning(VOTE_REASONING[role], voteIdx2[role]++),
+      actionSummary: `Voted for ${playerName(impostorSeat)}`,
+    })];
+    state = submitVote(state, { voterSeat: seat, targetSeat: impostorSeat }, () => ts);
   }
+
+  prev = thinking.length;
+  pushSnapshot(snapshots, "R2 Votes", "Round 2 votes cast", state, thinking, prev - alive2.length);
+
+  // --- Round 2: Elimination → Game Over ---
   const resolved2 = resolveRound(state, now);
   state = resolved2.state;
   state = applyElimination(state, resolved2.result, now);
 
-  snapshots.push({
-    label: "Game Over",
-    description: "Civilians win! Both special roles eliminated",
-    state,
-    thinking: [...thinking],
-  });
+  prev = thinking.length;
+  pushSnapshot(snapshots, "Game Over", "Civilians win! Both special roles eliminated", state, thinking, prev);
 
   return snapshots;
 }
@@ -310,4 +410,7 @@ export const midDiscussion = mockSnapshots[2].state;
 export const midVote = mockSnapshots[3].state;
 export const elimination = mockSnapshots[4].state;
 export const mrWhiteGuess = mockSnapshots[5].state;
-export const finished = mockSnapshots[6].state;
+export const r2Clues = mockSnapshots[6].state;
+export const r2Discussion = mockSnapshots[7].state;
+export const r2Votes = mockSnapshots[8].state;
+export const finished = mockSnapshots[9].state;
