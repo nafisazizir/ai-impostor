@@ -204,7 +204,12 @@ export function playerSystemPrompt(state: GameState, player: SeatNumber): string
   }
 
   lines.push("");
-  lines.push("Always respond in JSON format.");
+  lines.push(
+    "THINKING GUIDANCE: Focus your reasoning on game strategy — " +
+      "analyze each player's clues for consistency with yours, " +
+      "identify which players seem aligned or suspicious, " +
+      "and reason about deduction and deception.",
+  );
 
   return lines.join("\n");
 }
