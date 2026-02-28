@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Image from "next/image";
 
 import type { ThinkingEntry } from "@/lib/game/types";
 import type { SeatNumber } from "@/lib/game/types";
-import { playerLogo, playerName } from "@/lib/game/players";
+import { playerName } from "@/lib/game/players";
+import { PlayerIcon } from "@/components/icons/player-icons";
 import { cn } from "@/lib/utils";
 
 const PHASE_LABEL: Record<string, string> = {
@@ -65,13 +65,7 @@ export function ThinkingPanel({
       <div className="flex shrink-0 items-center gap-2 px-3 py-2">
         {headerSeat ? (
           <>
-            <Image
-              src={playerLogo(headerSeat)}
-              alt={playerName(headerSeat)}
-              width={18}
-              height={18}
-              className="size-4.5"
-            />
+            <PlayerIcon seat={headerSeat} className="text-muted-foreground size-4.5" />
             <span className="truncate font-mono text-xs">
               {playerName(headerSeat)}
             </span>
@@ -108,13 +102,7 @@ export function ThinkingPanel({
                   {/* Entry header — show when speaker, phase, or pass changes */}
                   {shouldShowHeader(thinking, i) && (
                     <div className="mb-1 flex items-center gap-1.5">
-                      <Image
-                        src={playerLogo(entry.seat)}
-                        alt={playerName(entry.seat)}
-                        width={14}
-                        height={14}
-                        className="size-3.5"
-                      />
+                      <PlayerIcon seat={entry.seat} className="text-muted-foreground size-3.5" />
                       <span className="text-muted-foreground font-mono text-xs">
                         {playerName(entry.seat)}
                         <span className="text-muted-foreground/60 ml-2">
