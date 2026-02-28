@@ -114,6 +114,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  color-scheme: dark;
 }
 
 @layer base {
@@ -122,5 +123,38 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+.animate-thinking {
+  -webkit-text-fill-color: transparent;
+  background: linear-gradient(
+      90deg,
+      #ca8a04 0% 42%,
+      #facc15 48%,
+      #fde047 50%,
+      #facc15 52%,
+      #ca8a04 58% 100%
+    )
+    0 0 / 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-thinking {
+    animation: 4s linear infinite wave-gradient;
+  }
+}
+
+@keyframes wave-gradient {
+  to {
+    background-position: -300% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse {
+    animation: none;
   }
 }

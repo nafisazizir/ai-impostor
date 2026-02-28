@@ -1,5 +1,7 @@
-import { ComponentExample } from "@/components/component-example";
+import { mockSnapshots } from "@/lib/game/mock-states";
 
-export default function Page() {
-  return <ComponentExample />;
+import { GameSpectator } from "@/components/game/game-spectator";
+
+export default function Home() {
+  return <GameSpectator snapshots={mockSnapshots} />;
 }
