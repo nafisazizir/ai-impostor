@@ -203,6 +203,9 @@ export function playerSystemPrompt(state: GameState, player: SeatNumber): string
       break;
   }
 
+  lines.push("");
+  lines.push("Always respond in JSON format.");
+
   return lines.join("\n");
 }
 
