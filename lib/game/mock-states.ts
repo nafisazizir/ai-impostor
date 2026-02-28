@@ -1,4 +1,5 @@
 import type { GameState } from "@/lib/game/state";
+import type { GameSnapshot } from "@/lib/game/snapshot";
 import { playerName } from "@/lib/game/players";
 import type { Role, SeatNumber, GamePhase, ThinkingEntry } from "@/lib/game/types";
 
@@ -149,12 +150,8 @@ function thinkingEntry(opts: ThinkingOpts): ThinkingEntry {
   return entry;
 }
 
-export type MockSnapshot = {
-  label: string;
+export type MockSnapshot = GameSnapshot & {
   description: string;
-  state: GameState;
-  thinking: ThinkingEntry[];
-  newThinkingStartIndex: number;
 };
 
 function pushSnapshot(
@@ -166,6 +163,7 @@ function pushSnapshot(
   prevLength: number,
 ): void {
   snapshots.push({
+    index: snapshots.length,
     label,
     description,
     state,

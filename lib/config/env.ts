@@ -14,7 +14,7 @@ export type AppEnv = {
 };
 
 const DEFAULT_WORKFLOW_LOOP_ID = "ai-impostor-main-loop";
-const DEFAULT_MAX_DISCUSSION_PASSES = 2;
+const DEFAULT_MAX_DISCUSSION_PASSES = 1;
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) {
@@ -31,8 +31,13 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   return parsed;
 }
 
-function assertRequiredKeys(env: NodeJS.ProcessEnv, keys: readonly RequiredEnvKey[]): void {
-  const missing = keys.filter((key) => !env[key] || env[key]?.trim().length === 0);
+function assertRequiredKeys(
+  env: NodeJS.ProcessEnv,
+  keys: readonly RequiredEnvKey[],
+): void {
+  const missing = keys.filter(
+    (key) => !env[key] || env[key]?.trim().length === 0,
+  );
   if (missing.length > 0) {
     throw new Error(
       `Missing required environment variables: ${missing.join(", ")}. Set them in .env.local.`,
