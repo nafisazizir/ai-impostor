@@ -44,10 +44,10 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
     providerOptions: {},
   },
   2: {
-    provider: "alibaba",
-    model: "qwen3-235b",
-    logo: AlibabaIcon,
-    gatewayId: "alibaba/qwen3-235b",
+    provider: "anthropic",
+    model: "claude-3-haiku",
+    logo: AnthropicIcon,
+    gatewayId: "anthropic/claude-3-haiku",
     providerOptions: {},
   },
   3: {
@@ -72,10 +72,10 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
     providerOptions: {},
   },
   6: {
-    provider: "deepseek",
-    model: "deepseek-v3.1",
-    logo: DeepSeekIcon,
-    gatewayId: "deepseek/deepseek-v3.1",
+    provider: "xai",
+    model: "grok-4.1-fast-non-reasoning",
+    logo: XAIIcon,
+    gatewayId: "xai/grok-4.1-fast-non-reasoning",
     providerOptions: {},
   },
 };
