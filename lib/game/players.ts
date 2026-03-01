@@ -5,13 +5,18 @@ import type { GoogleLanguageModelOptions } from "@ai-sdk/google";
 import type { DeepSeekLanguageModelOptions } from "@ai-sdk/deepseek";
 import { type XaiLanguageModelResponsesOptions } from "@ai-sdk/xai";
 
+type JSONValue = null | string | number | boolean | JSONObject | JSONArray;
+type JSONObject = {
+  [key: string]: JSONValue | undefined;
+};
+type JSONArray = JSONValue[];
+
 type PlayerConfig = {
   provider: string;
   model: string;
   logo: string;
   gatewayId: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerOptions: Record<string, any>;
+  providerOptions: Record<string, JSONObject>;
 };
 
 export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
@@ -23,6 +28,7 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
     providerOptions: {
       openai: {
         reasoningEffort: "low",
+        reasoningSummary: "auto",
       } satisfies OpenAILanguageModelResponsesOptions,
     },
   },
@@ -50,10 +56,12 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
   },
   4: {
     provider: "xai",
-    model: "grok-4.1-fast-reasoning",
+    model: "grok-4-fast-reasoning",
     logo: "/xai.svg",
-    gatewayId: "xai/grok-4.1-fast-reasoning",
-    providerOptions: {},
+    gatewayId: "xai/grok-4-fast-reasoning",
+    providerOptions: {
+      xai: {} satisfies XaiLanguageModelResponsesOptions,
+    },
   },
   5: {
     provider: "deepseek",
@@ -74,6 +82,7 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
     providerOptions: {
       openai: {
         reasoningEffort: "low",
+        reasoningSummary: "auto",
       } satisfies OpenAILanguageModelResponsesOptions,
     },
   },
