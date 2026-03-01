@@ -1,9 +1,21 @@
+import type { ComponentType } from "react";
 import type { SeatNumber } from "@/lib/game/types";
 import type { OpenAILanguageModelResponsesOptions } from "@ai-sdk/openai";
 import type { AnthropicLanguageModelOptions } from "@ai-sdk/anthropic";
 import type { GoogleLanguageModelOptions } from "@ai-sdk/google";
 import type { DeepSeekLanguageModelOptions } from "@ai-sdk/deepseek";
 import { type XaiLanguageModelResponsesOptions } from "@ai-sdk/xai";
+import type { IconProps } from "@/components/icons/player-icons";
+import {
+  OpenAIIcon,
+  AlibabaIcon,
+  GoogleIcon,
+  MetaIcon,
+  MistralIcon,
+  DeepSeekIcon,
+  AnthropicIcon,
+  XAIIcon,
+} from "@/components/icons/player-icons";
 
 type JSONValue = null | string | number | boolean | JSONObject | JSONArray;
 type JSONObject = {
@@ -14,16 +26,66 @@ type JSONArray = JSONValue[];
 type PlayerConfig = {
   provider: string;
   model: string;
-  logo: string;
+  logo: ComponentType<IconProps>;
   gatewayId: string;
   providerOptions: Record<string, JSONObject>;
 };
 
+/**
+ * Budget models for continuous/infinite gameplay (~20-50x cheaper).
+ * No reasoning/thinking tokens — no hidden cost multipliers.
+ */
 export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
   1: {
     provider: "openai",
+    model: "gpt-5-nano",
+    logo: OpenAIIcon,
+    gatewayId: "openai/gpt-5-nano",
+    providerOptions: {},
+  },
+  2: {
+    provider: "alibaba",
+    model: "qwen3-235b",
+    logo: AlibabaIcon,
+    gatewayId: "alibaba/qwen3-235b",
+    providerOptions: {},
+  },
+  3: {
+    provider: "google",
+    model: "gemini-2.0-flash-lite",
+    logo: GoogleIcon,
+    gatewayId: "google/gemini-2.0-flash-lite",
+    providerOptions: {},
+  },
+  4: {
+    provider: "meta",
+    model: "llama-4-scout",
+    logo: MetaIcon,
+    gatewayId: "meta/llama-4-scout",
+    providerOptions: {},
+  },
+  5: {
+    provider: "mistral",
+    model: "mistral-small",
+    logo: MistralIcon,
+    gatewayId: "mistral/mistral-small",
+    providerOptions: {},
+  },
+  6: {
+    provider: "deepseek",
+    model: "deepseek-v3.1",
+    logo: DeepSeekIcon,
+    gatewayId: "deepseek/deepseek-v3.1",
+    providerOptions: {},
+  },
+};
+
+/** Original expensive reasoning/thinking models (archived for reference). */
+export const ARCHIVED_PLAYERS: Record<SeatNumber, PlayerConfig> = {
+  1: {
+    provider: "openai",
     model: "gpt-5-mini",
-    logo: "/openai.svg",
+    logo: OpenAIIcon,
     gatewayId: "openai/gpt-5-mini",
     providerOptions: {
       openai: {
@@ -35,7 +97,7 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
   2: {
     provider: "anthropic",
     model: "claude-sonnet-4.6",
-    logo: "/anthropic.svg",
+    logo: AnthropicIcon,
     gatewayId: "anthropic/claude-sonnet-4.6",
     providerOptions: {
       anthropic: {
@@ -46,7 +108,7 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
   3: {
     provider: "google",
     model: "gemini-2.5-flash",
-    logo: "/google.svg",
+    logo: GoogleIcon,
     gatewayId: "google/gemini-2.5-flash",
     providerOptions: {
       google: {
@@ -57,7 +119,7 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
   4: {
     provider: "xai",
     model: "grok-4-fast-reasoning",
-    logo: "/xai.svg",
+    logo: XAIIcon,
     gatewayId: "xai/grok-4-fast-reasoning",
     providerOptions: {
       xai: {} satisfies XaiLanguageModelResponsesOptions,
@@ -66,7 +128,7 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
   5: {
     provider: "deepseek",
     model: "deepseek-v3.2-thinking",
-    logo: "/deepseek.svg",
+    logo: DeepSeekIcon,
     gatewayId: "deepseek/deepseek-v3.2-thinking",
     providerOptions: {
       deepseek: {
@@ -77,7 +139,7 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
   6: {
     provider: "openai",
     model: "gpt-5.1-codex-mini",
-    logo: "/openai.svg",
+    logo: OpenAIIcon,
     gatewayId: "openai/gpt-5.1-codex-mini",
     providerOptions: {
       openai: {
@@ -92,6 +154,6 @@ export function playerName(seat: SeatNumber): string {
   return PLAYERS[seat].model;
 }
 
-export function playerLogo(seat: SeatNumber): string {
+export function playerLogo(seat: SeatNumber): ComponentType<IconProps> {
   return PLAYERS[seat].logo;
 }

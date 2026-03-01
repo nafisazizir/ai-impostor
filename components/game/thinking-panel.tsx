@@ -7,8 +7,7 @@ import type {
   StreamingThinking,
   StreamingAnswer,
 } from "@/hooks/use-game-stream";
-import { playerName } from "@/lib/game/players";
-import { PlayerIcon } from "@/components/icons/player-icons";
+import { playerLogo, playerName } from "@/lib/game/players";
 import { cn } from "@/lib/utils";
 
 const PHASE_LABEL: Record<string, string> = {
@@ -95,20 +94,20 @@ export function ThinkingPanel({
                 className="transition-opacity duration-300"
               >
                 {/* Entry header — show when speaker, phase, or pass changes */}
-                {shouldShowHeader(thinking, i) && (
-                  <div className="mb-1 flex items-center gap-1.5">
-                    <PlayerIcon
-                      seat={entry.seat}
-                      className="text-muted-foreground size-3.5"
-                    />
-                    <span className="text-muted-foreground font-mono text-xs">
-                      {playerName(entry.seat)}
-                      <span className="text-muted-foreground/60 ml-2">
-                        {entryLabel(entry)}
+                {shouldShowHeader(thinking, i) && (() => {
+                  const Logo = playerLogo(entry.seat);
+                  return (
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Logo className="text-muted-foreground size-3.5" />
+                      <span className="text-muted-foreground font-mono text-xs">
+                        {playerName(entry.seat)}
+                        <span className="text-muted-foreground/60 ml-2">
+                          {entryLabel(entry)}
+                        </span>
                       </span>
-                    </span>
-                  </div>
-                )}
+                    </div>
+                  );
+                })()}
                 <p className="text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap">
                   {entry.text}
                 </p>
@@ -122,54 +121,54 @@ export function ThinkingPanel({
           })}
 
           {/* Live streaming thinking entry */}
-          {streamingThinking && (
-            <div className="transition-opacity duration-300">
-              <div className="mb-1 flex items-center gap-1.5">
-                <PlayerIcon
-                  seat={streamingThinking.seat}
-                  className="text-muted-foreground size-3.5"
-                />
-                <span className="font-mono text-xs">
-                  <span
-                    className={cn(
-                      streamingThinking.isStreaming
-                        ? "animate-thinking"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {playerName(streamingThinking.seat)}
+          {streamingThinking && (() => {
+            const Logo = playerLogo(streamingThinking.seat);
+            return (
+              <div className="transition-opacity duration-300">
+                <div className="mb-1 flex items-center gap-1.5">
+                  <Logo className="text-muted-foreground size-3.5" />
+                  <span className="font-mono text-xs">
+                    <span
+                      className={cn(
+                        streamingThinking.isStreaming
+                          ? "animate-thinking"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {playerName(streamingThinking.seat)}
+                    </span>
+                    <span className="text-muted-foreground/60 ml-2">
+                      {streamingEntryLabel(streamingThinking)}
+                    </span>
                   </span>
-                  <span className="text-muted-foreground/60 ml-2">
-                    {streamingEntryLabel(streamingThinking)}
-                  </span>
-                </span>
-              </div>
-              <p
-                className={cn(
-                  "text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap",
-                  streamingThinking.isStreaming,
-                )}
-              >
-                {streamingThinking.text}
-              </p>
-              {/* Streaming answer with inline prefix — matches actionSummary format */}
-              {streamingAnswer?.text ? (
-                <p className="text-muted-foreground mt-0.5 font-mono text-xs leading-tight whitespace-pre-wrap">
-                  {ANSWER_PREFIX[streamingAnswer.kind]}
-                  {streamingAnswer.text}
-                  {!streamingAnswer.isStreaming &&
-                    ANSWER_SUFFIX[streamingAnswer.kind]}
+                </div>
+                <p
+                  className={cn(
+                    "text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap",
+                    streamingThinking.isStreaming,
+                  )}
+                >
+                  {streamingThinking.text}
                 </p>
-              ) : (
-                /* Vote / phases with no streaming answer — show actionSummary directly */
-                streamingThinking.actionSummary && (
-                  <p className="text-muted-foreground mt-0.5 font-mono text-xs">
-                    {streamingThinking.actionSummary}
+                {/* Streaming answer with inline prefix — matches actionSummary format */}
+                {streamingAnswer?.text ? (
+                  <p className="text-muted-foreground mt-0.5 font-mono text-xs leading-tight whitespace-pre-wrap">
+                    {ANSWER_PREFIX[streamingAnswer.kind]}
+                    {streamingAnswer.text}
+                    {!streamingAnswer.isStreaming &&
+                      ANSWER_SUFFIX[streamingAnswer.kind]}
                   </p>
-                )
-              )}
-            </div>
-          )}
+                ) : (
+                  /* Vote / phases with no streaming answer — show actionSummary directly */
+                  streamingThinking.actionSummary && (
+                    <p className="text-muted-foreground mt-0.5 font-mono text-xs">
+                      {streamingThinking.actionSummary}
+                    </p>
+                  )
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

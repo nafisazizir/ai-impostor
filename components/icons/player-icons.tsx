@@ -1,9 +1,8 @@
 import type { SVGProps } from "react";
-import type { SeatNumber } from "@/lib/game/types";
 
-type IconProps = SVGProps<SVGSVGElement>;
+export type IconProps = SVGProps<SVGSVGElement>;
 
-function OpenAIIcon(props: IconProps) {
+export function OpenAIIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 720 720" fill="none" {...props}>
       <path
@@ -16,7 +15,7 @@ function OpenAIIcon(props: IconProps) {
   );
 }
 
-function AnthropicIcon(props: IconProps) {
+export function AnthropicIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 720 720" fill="none" {...props}>
       <path
@@ -29,7 +28,7 @@ function AnthropicIcon(props: IconProps) {
   );
 }
 
-function GoogleIcon(props: IconProps) {
+export function GoogleIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 720 720" fill="none" {...props}>
       <path
@@ -52,7 +51,7 @@ function GoogleIcon(props: IconProps) {
   );
 }
 
-function XAIIcon(props: IconProps) {
+export function XAIIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 720 720" fill="none" {...props}>
       <path
@@ -65,7 +64,7 @@ function XAIIcon(props: IconProps) {
   );
 }
 
-function DeepSeekIcon(props: IconProps) {
+export function DeepSeekIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 720 720" fill="none" {...props}>
       <path
@@ -76,20 +75,112 @@ function DeepSeekIcon(props: IconProps) {
   );
 }
 
-const PLAYER_ICONS: Record<SeatNumber, (props: IconProps) => React.JSX.Element> = {
-  1: OpenAIIcon,
-  2: AnthropicIcon,
-  3: GoogleIcon,
-  4: XAIIcon,
-  5: DeepSeekIcon,
-  6: OpenAIIcon,
-};
-
-export function PlayerIcon({
-  seat,
-  className,
-  ...props
-}: { seat: SeatNumber } & IconProps) {
-  const Icon = PLAYER_ICONS[seat];
-  return <Icon className={className} {...props} />;
+export function AlibabaIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 720 720" fill="none" {...props}>
+      <path
+        d="M442.56 139.2H600.78C667.26 139.2 720 194.25 720 260.73V474C720.112 489.689 717.104 505.243 711.153 519.76C705.201 534.276 696.425 547.465 685.332 558.561C674.239 569.656 661.053 578.436 646.538 584.391C632.023 590.347 616.469 593.358 600.78 593.25H442.56L481.53 538.2L596.19 501.54C616.83 494.64 630.57 474 630.57 453.39V279.09C630.57 258.48 616.83 237.84 596.19 230.94L481.5 194.25L442.5 139.2H442.56ZM89.4 453.33C89.4 473.97 103.2 494.61 123.81 501.51L238.47 535.89L277.47 590.94H119.22C103.531 591.048 87.9774 588.037 73.4624 582.082C58.9473 576.126 45.7605 567.346 34.6679 556.251C23.5754 545.156 14.7985 531.966 8.84702 517.45C2.89558 502.933-0.111675 487.379-6.3757e-06 471.69V260.7C-6.3757e-06 194.22 52.74 139.2 119.25 139.2H277.44L238.5 194.22L123.81 230.91C103.17 237.81 89.43 258.45 89.43 279.09L89.4 453.33Z"
+        fill="currentColor"
+      />
+      <path
+        d="M481.53 336.39H240.75V391.44H481.53V336.39Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
 }
+
+export function MetaIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 720 720" fill="none" {...props}>
+      <path
+        d="M206.91 120H206.19L205.26 198.45H205.92C257.37 198.45 297.3 239.16 384.12 385.83L389.37 394.74L389.73 395.34L438.33 322.2L437.97 321.63C427.35 304.242 416.367 287.079 405.03 270.15C393.868 253.444 382.11 237.143 369.78 221.28C312.39 147.96 264.39 120 206.91 120Z"
+        fill="currentColor"
+      />
+      <path
+        d="M206.19 120C148.5 120.3 97.41 157.74 60.6 215.1C60.4996 215.27 60.3996 215.44 60.3 215.61L127.92 252.54L128.25 252.03C149.79 219.54 176.55 198.81 205.29 198.48H205.92L206.88 120H206.19Z"
+        fill="currentColor"
+      />
+      <path
+        d="M60.57 215.1L60.24 215.61C36 253.41 17.94 299.85 8.22001 349.92L8.07001 350.58L84.09 368.58L84.21 367.92C92.31 323.91 107.79 283.08 127.89 252.57L128.22 252.06L60.57 215.1Z"
+        fill="currentColor"
+      />
+      <path
+        d="M84.21 367.92L8.22 349.92L8.07 350.58C2.76 378.12 0.06 406.11 0 434.16V434.85L77.94 441.84V441.15C77.6564 416.603 79.7664 392.087 84.24 367.95L84.21 367.92Z"
+        fill="currentColor"
+      />
+      <path
+        d="M80.31 466.11C78.9123 458.051 78.1201 449.898 77.94 441.72V441.06L-2.99859e-05 434.04V434.76C-0.0874976 451.38 1.37888 467.973 4.37997 484.32L80.43 466.77C80.3894 466.55 80.3494 466.33 80.31 466.11Z"
+        fill="currentColor"
+      />
+      <path
+        d="M98.1 506.7C89.58 497.4 83.58 484.02 80.43 466.86L80.31 466.23L4.26001 483.78L4.38001 484.41C10.14 514.71 21.42 539.91 37.56 559.02L37.98 559.53L98.52 507.18C98.3692 507.021 98.2492 506.861 98.1 506.7Z"
+        fill="currentColor"
+      />
+      <path
+        d="M323.4 289.62C277.56 360.12 249.78 404.37 249.78 404.37C188.73 500.37 167.61 521.88 133.65 521.88C126.971 522.054 120.334 520.782 114.193 518.152C108.052 515.521 102.552 511.594 98.07 506.64L37.56 558.96L37.98 559.47C60.3 585.54 91.74 600 130.68 600C189.57 600 231.9 572.16 307.2 440.1L360.18 346.2C348.426 327.009 336.182 308.142 323.4 289.62Z"
+        fill="currentColor"
+      />
+      <path
+        d="M405.06 178.38L404.58 178.86C392.58 191.76 381 206.1 369.78 221.34C381.12 235.83 392.82 252.06 405.03 270.24C419.43 247.95 432.87 229.89 446.04 216.03L446.52 215.55L405.06 178.38Z"
+        fill="currentColor"
+      />
+      <path
+        d="M627.54 171.39C595.59 138.99 557.49 120 516.75 120C473.79 120 437.64 143.61 405.06 178.32L404.58 178.8L446.04 216L446.52 215.49C467.97 193.08 488.76 181.89 511.8 181.89C536.58 181.89 559.8 193.59 579.9 214.14L580.35 214.62L628.02 171.87L627.54 171.39Z"
+        fill="currentColor"
+      />
+      <path
+        d="M719.94 423.75C718.14 319.74 681.84 226.77 628.02 171.87L627.54 171.39L579.9 214.11L580.35 214.59C620.85 256.35 648.66 333.99 651.18 423.72V424.41H719.94V423.75Z"
+        fill="currentColor"
+      />
+      <path
+        d="M719.94 424.5V423.81H651.18V424.47C651.3 428.67 651.36 432.93 651.36 437.19C651.36 461.64 647.73 481.41 640.32 495.69L639.99 496.35L691.23 549.81L691.62 549.21C710.22 520.41 720 480.42 720 431.91C720 429.42 720 426.96 719.94 424.5Z"
+        fill="currentColor"
+      />
+      <path
+        d="M640.32 495.6L639.99 496.2C633.57 508.26 624.42 516.3 612.48 519.81L635.82 593.67C640.319 592.15 644.709 590.326 648.96 588.21C665.572 579.812 679.7 567.215 689.94 551.67L691.26 549.72L691.62 549.12L640.32 495.6Z"
+        fill="currentColor"
+      />
+      <path
+        d="M597.6 521.79C589.74 521.79 582.84 520.62 576.06 517.59L552.12 593.25C565.59 597.84 579.93 599.91 595.92 599.91C610.68 599.91 624.21 597.72 636.48 593.46L613.08 519.6C608.07 521.1 602.88 521.85 597.6 521.79Z"
+        fill="currentColor"
+      />
+      <path
+        d="M549.69 496.02L549.27 495.51L494.19 552.93L494.67 553.44C513.78 573.9 532.05 586.59 552.78 593.55L576.69 517.95C567.96 514.2 559.5 507.36 549.69 496.02Z"
+        fill="currentColor"
+      />
+      <path
+        d="M549.27 495.45C532.77 476.19 512.31 444.09 480.18 392.25L438.3 322.17L437.97 321.57L389.37 394.71L389.73 395.31L419.4 445.35C448.17 493.65 471.6 528.57 494.19 552.9L494.67 553.38L549.69 495.96C549.549 495.791 549.409 495.621 549.27 495.45Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+export function MistralIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 720 720" fill="none" {...props}>
+      <path
+        d="M102.84 102H205.71V204.84H102.84V102ZM514.26 102H617.16V204.84H514.26V102Z"
+        fill="currentColor"
+      />
+      <path
+        d="M102.84 204.84H308.55V307.71H102.87L102.84 204.84ZM411.42 204.84H617.13V307.71H411.42V204.84Z"
+        fill="currentColor"
+      />
+      <path
+        d="M102.84 307.74H617.16V410.58H102.84V307.74Z"
+        fill="currentColor"
+      />
+      <path
+        d="M102.84 410.58H205.71V513.42H102.84V410.58ZM308.58 410.58H411.45V513.42H308.58V410.58ZM514.26 410.58H617.16V513.42H514.26V410.58Z"
+        fill="currentColor"
+      />
+      <path
+        d="M0 513.42H308.58V616.29H0V513.42ZM411.42 513.42H720V616.29H411.42V513.42Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+

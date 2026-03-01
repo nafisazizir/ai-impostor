@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 import { playerLogo, playerName } from "@/lib/game/players";
 import type { Role, SeatNumber } from "@/lib/game/types";
 import { cn } from "@/lib/utils";
@@ -25,6 +23,7 @@ export function SeatCard({
 }) {
   const isDead = !isAlive;
   const isInactive = isAlive && !isActive;
+  const Logo = playerLogo(seat);
 
   return (
     <div
@@ -34,13 +33,7 @@ export function SeatCard({
         isDead && "opacity-40",
       )}
     >
-      <Image
-        src={playerLogo(seat)}
-        alt={playerName(seat)}
-        width={36}
-        height={36}
-        className={cn("size-9", isDead && "grayscale")}
-      />
+      <Logo className={cn("size-9", isDead && "grayscale")} />
 
       <span
         className={cn(
