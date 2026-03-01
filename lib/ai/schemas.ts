@@ -17,29 +17,27 @@ export const DiscussionSchema = z.object({
 
 export const VoteSchema = z.object({
   targetPlayer: z
-    .int()
-    .min(1)
-    .max(6)
-    .describe("The player number (1-6) you vote to eliminate"),
+    .string()
+    .describe("The model name of the player you vote to eliminate"),
 });
 
 export const MrWhiteGuessSchema = z.object({
   guess: z.string().describe("Your guess for the civilian word"),
 });
 
-export function createVoteSchema(validTargets: number[]) {
-  const literals = validTargets.map((n) => z.literal(n));
+export function createVoteSchema(validTargetNames: string[]) {
+  const literals = validTargetNames.map((n) => z.literal(n));
   return z.object({
     targetPlayer: z
       .union(
         literals as [
-          ZodLiteral<number>,
-          ZodLiteral<number>,
-          ...ZodLiteral<number>[],
+          ZodLiteral<string>,
+          ZodLiteral<string>,
+          ...ZodLiteral<string>[],
         ],
       )
       .describe(
-        `The player number you vote to eliminate. Valid: ${validTargets.join(", ")}`,
+        `The model name of the player you vote to eliminate. Valid: ${validTargetNames.join(", ")}`,
       ),
   });
 }

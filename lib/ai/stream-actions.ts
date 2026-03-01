@@ -2,7 +2,7 @@ import { streamText, Output } from "ai";
 import type { z } from "zod";
 
 import type { GameState } from "@/lib/game/state";
-import { playerName } from "@/lib/game/players";
+import { playerName, seatForName } from "@/lib/game/players";
 import type { SeatNumber, WordPair } from "@/lib/game/types";
 import { orderedAliveSeats } from "@/lib/game/engine";
 
@@ -11,7 +11,7 @@ import {
   ClueSchema,
   DiscussionSchema,
   MrWhiteGuessSchema,
-  VoteSchema,
+  createVoteSchema,
 } from "@/lib/ai/schemas";
 import {
   playerModel,
@@ -224,11 +224,14 @@ export async function streamVote(
 ): Promise<ActionResult<{ targetPlayer: number }>> {
   const alive = orderedAliveSeats(state);
   const validTargets = alive.filter((seat) => seat !== player);
+  const validTargetNames = validTargets.map((seat) => playerName(seat));
+
+  const voteSchema = createVoteSchema(validTargetNames);
 
   const result = streamText({
     model: playerModel(player),
     providerOptions: playerProviderOptions(player),
-    output: Output.object({ schema: VoteSchema }),
+    output: Output.object({ schema: voteSchema }),
     system: playerSystemPrompt(state, player),
     prompt: voteUserPrompt(state, player),
     maxRetries: 2,
@@ -239,20 +242,22 @@ export async function streamVote(
   const label = playerModelId(player);
   const { output, reasoningText } = await resolveOutput(
     result,
-    VoteSchema,
+    voteSchema,
     label,
   );
 
-  if (!validTargets.includes(output.targetPlayer as SeatNumber)) {
+  const targetName = output.targetPlayer;
+  if (!validTargetNames.includes(targetName)) {
     throw new Error(
-      `[${label}] Voted for invalid target ${output.targetPlayer} (valid: ${validTargets.join(", ")})`,
+      `[${label}] Voted for invalid target "${targetName}" (valid: ${validTargetNames.join(", ")})`,
     );
   }
 
+  const targetSeat = seatForName(targetName);
   return {
-    output,
+    output: { targetPlayer: targetSeat },
     reasoning: reasoningText,
-    actionSummary: `Voted for ${playerName(output.targetPlayer as SeatNumber)}`,
+    actionSummary: `Voted for ${targetName}`,
   };
 }
 

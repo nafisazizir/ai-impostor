@@ -121,10 +121,10 @@ export async function runGame(
     console.log(`[${gameId}] Clue phase (${aliveForClues.length} players)`);
     for (const seat of aliveForClues) {
       const prev = thinking.length;
-      const result = await withRetry(() => generateClue(state, seat), `${gameId} P${seat} clue`);
+      const result = await withRetry(() => generateClue(state, seat), `${gameId} ${playerName(seat)} clue`);
       pushThinking(thinking, seat, state, result);
       state = submitClue(state, { seat, text: result.output.clue });
-      console.log(`[${gameId}]   Player ${seat}: "${result.output.clue}"`);
+      console.log(`[${gameId}]   ${playerName(seat)}: "${result.output.clue}"`);
       emitSnapshot(`${playerName(seat)} gave clue`, state, prev);
     }
 
@@ -138,12 +138,12 @@ export async function runGame(
         try {
           result = await withRetry(
             () => generateDiscussionMessage(state, seat),
-            `${gameId} P${seat} discussion`,
+            `${gameId} ${playerName(seat)} discussion`,
           );
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           console.error(
-            `[${gameId}] P${seat} discussion failed after retries: ${msg}`,
+            `[${gameId}] ${playerName(seat)} discussion failed after retries: ${msg}`,
           );
           result = {
             output: { message: "I need more time to think about this." },
@@ -153,7 +153,7 @@ export async function runGame(
         }
         pushThinking(thinking, seat, state, result, pass);
         state = submitDiscussionMessage(state, { seat, text: result.output.message }, maxDiscussionPasses);
-        console.log(`[${gameId}]   Player ${seat}: "${result.output.message}"`);
+        console.log(`[${gameId}]   ${playerName(seat)}: "${result.output.message}"`);
         emitSnapshot(`${playerName(seat)} discussed`, state, prev);
       }
     }
@@ -163,13 +163,13 @@ export async function runGame(
     console.log(`[${gameId}] Vote phase (${aliveForVotes.length} players)`);
     for (const seat of aliveForVotes) {
       const prev = thinking.length;
-      const result = await withRetry(() => generateVote(state, seat), `${gameId} P${seat} vote`);
+      const result = await withRetry(() => generateVote(state, seat), `${gameId} ${playerName(seat)} vote`);
       pushThinking(thinking, seat, state, result);
       state = submitVote(state, {
         voterSeat: seat,
         targetSeat: result.output.targetPlayer as SeatNumber,
       });
-      console.log(`[${gameId}]   Player ${seat} voted for Player ${result.output.targetPlayer}`);
+      console.log(`[${gameId}]   ${playerName(seat)} voted for ${playerName(result.output.targetPlayer as SeatNumber)}`);
       emitSnapshot(`${playerName(seat)} voted`, state, prev);
     }
 
@@ -188,7 +188,7 @@ export async function runGame(
     const eliminatedRole = state.rolesBySeat[eliminatedSeat];
     state = applyElimination(state, resolved.result);
     console.log(
-      `[${gameId}] Eliminated: Player ${eliminatedSeat} (${eliminatedRole})`,
+      `[${gameId}] Eliminated: ${playerName(eliminatedSeat)} (${eliminatedRole})`,
     );
     emitSnapshot(`${playerName(eliminatedSeat)} eliminated`, state, thinking.length);
 
@@ -196,7 +196,7 @@ export async function runGame(
     if (eliminatedRole === "mr_white" && state.currentPhase === "elimination") {
       console.log(`[${gameId}] Mr. White gets a final guess...`);
       const prev = thinking.length;
-      const guessResult = await withRetry(() => generateMrWhiteGuess(state, eliminatedSeat), `${gameId} P${eliminatedSeat} mr-white-guess`);
+      const guessResult = await withRetry(() => generateMrWhiteGuess(state, eliminatedSeat), `${gameId} ${playerName(eliminatedSeat)} mr-white-guess`);
       pushThinking(thinking, eliminatedSeat, state, guessResult);
       state = resolveMrWhiteGuess(state, guessResult.output.guess);
       console.log(

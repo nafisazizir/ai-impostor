@@ -5,6 +5,7 @@ import {
   DiscussionSchema,
   VoteSchema,
   MrWhiteGuessSchema,
+  createVoteSchema,
 } from "@/lib/ai/schemas";
 
 describe("WordPairSchema", () => {
@@ -55,7 +56,7 @@ describe("ClueSchema", () => {
 describe("DiscussionSchema", () => {
   it("accepts valid message", () => {
     const result = DiscussionSchema.safeParse({
-      message: "I think Player 3 is suspicious.",
+      message: "I think gemini-2.0-flash-lite is suspicious.",
     });
     expect(result.success).toBe(true);
   });
@@ -67,30 +68,50 @@ describe("DiscussionSchema", () => {
 });
 
 describe("VoteSchema", () => {
-  it("accepts valid player numbers", () => {
-    for (let i = 1; i <= 6; i++) {
-      const result = VoteSchema.safeParse({ targetPlayer: i });
+  it("accepts valid model name strings", () => {
+    const result = VoteSchema.safeParse({ targetPlayer: "gpt-5-nano" });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts any string (base schema is permissive)", () => {
+    const result = VoteSchema.safeParse({ targetPlayer: "claude-3-haiku" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects numbers", () => {
+    const result = VoteSchema.safeParse({ targetPlayer: 3 });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing targetPlayer", () => {
+    const result = VoteSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("createVoteSchema", () => {
+  const validNames = ["gpt-5-nano", "claude-3-haiku", "gemini-2.0-flash-lite"];
+  const schema = createVoteSchema(validNames);
+
+  it("accepts valid model names", () => {
+    for (const name of validNames) {
+      const result = schema.safeParse({ targetPlayer: name });
       expect(result.success).toBe(true);
     }
   });
 
-  it("rejects 0", () => {
-    const result = VoteSchema.safeParse({ targetPlayer: 0 });
+  it("rejects model names not in valid list", () => {
+    const result = schema.safeParse({ targetPlayer: "llama-4-scout" });
     expect(result.success).toBe(false);
   });
 
-  it("rejects 7", () => {
-    const result = VoteSchema.safeParse({ targetPlayer: 7 });
+  it("rejects numbers", () => {
+    const result = schema.safeParse({ targetPlayer: 1 });
     expect(result.success).toBe(false);
   });
 
-  it("rejects non-integer", () => {
-    const result = VoteSchema.safeParse({ targetPlayer: 2.5 });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects string", () => {
-    const result = VoteSchema.safeParse({ targetPlayer: "3" });
+  it("rejects empty string", () => {
+    const result = schema.safeParse({ targetPlayer: "" });
     expect(result.success).toBe(false);
   });
 });

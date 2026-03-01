@@ -11,6 +11,7 @@ import {
   applyElimination,
 } from "@/lib/game/engine";
 import type { SeatNumber } from "@/lib/game/types";
+import { playerName } from "@/lib/game/players";
 
 import {
   playerSystemPrompt,
@@ -90,21 +91,23 @@ describe("Information hiding", () => {
   });
 });
 
-describe("Player N terminology", () => {
-  it("system prompt uses Player N format", () => {
+describe("Model name terminology", () => {
+  it("system prompt uses model name format", () => {
     const state = createTestState();
     const civSeat = findSeatByRole(state, "civilian");
     const prompt = playerSystemPrompt(state, civSeat);
 
-    expect(prompt).toMatch(/You are Player \d/);
+    expect(prompt).toContain(`You are ${playerName(civSeat)}`);
+    expect(prompt).not.toMatch(/You are Player \d/);
   });
 
-  it("game context lists players as Player N (model)", () => {
+  it("game context lists players by model name", () => {
     const state = createTestState();
     const seat = orderedAliveSeats(state)[0];
     const context = gameContextSummary(state, seat);
 
-    expect(context).toMatch(/Player \d+ \(.+\)/);
+    expect(context).toContain(playerName(seat));
+    expect(context).not.toMatch(/Player \d+ \(/);
   });
 
   it("host system prompt is static and does not depend on game state", () => {
@@ -125,8 +128,6 @@ describe("Vote prompt valid targets", () => {
     const voter = alive[0];
     const prompt = voteUserPrompt(state, voter);
 
-    // The voter's own line should NOT be in the vote target list
-    // Count occurrences of voter's "Player N" in the target list section
     const targetSection = prompt.split(
       "You MUST vote for one of the following",
     )[1];
@@ -135,16 +136,16 @@ describe("Vote prompt valid targets", () => {
     // Self should not be listed as a target
     const targetLines = targetSection!
       .split("\n")
-      .filter((line) => line.trim().startsWith("- Player"));
+      .filter((line) => line.trim().startsWith("-"));
     const selfLine = targetLines.find((line) =>
-      line.includes(`Player ${voter}`),
+      line.includes(playerName(voter)),
     );
     expect(selfLine).toBeUndefined();
 
     // All other alive players should be listed
     const otherAlive = alive.filter((s) => s !== voter);
     for (const seat of otherAlive) {
-      expect(targetSection).toContain(`Player ${seat}`);
+      expect(targetSection).toContain(playerName(seat));
     }
   });
 
@@ -190,12 +191,16 @@ describe("Vote prompt valid targets", () => {
       expect(targetSection).toBeDefined();
 
       // Eliminated player should not be in vote targets
-      expect(targetSection).not.toMatch(
-        new RegExp(`Player ${target} \\(`, "m"),
+      const targetLines = targetSection!
+        .split("\n")
+        .filter((line) => line.trim().startsWith("-"));
+      const eliminatedLine = targetLines.find((line) =>
+        line.includes(playerName(target)),
       );
+      expect(eliminatedLine).toBeUndefined();
 
       // But they should appear in the history context
-      expect(prompt).toContain(`Player ${target}`);
+      expect(prompt).toContain(playerName(target));
     }
   });
 });

@@ -1,7 +1,7 @@
 import { generateText, NoOutputGeneratedError, Output } from "ai";
 
 import type { GameState } from "@/lib/game/state";
-import { playerName } from "@/lib/game/players";
+import { playerName, seatForName } from "@/lib/game/players";
 import type { SeatNumber, WordPair } from "@/lib/game/types";
 import { orderedAliveSeats } from "@/lib/game/engine";
 
@@ -9,7 +9,7 @@ import {
   WordPairSchema,
   ClueSchema,
   DiscussionSchema,
-  VoteSchema,
+  createVoteSchema,
   MrWhiteGuessSchema,
 } from "@/lib/ai/schemas";
 import {
@@ -132,36 +132,40 @@ export async function generateVote(
 ): Promise<ActionResult<{ targetPlayer: number }>> {
   const alive = orderedAliveSeats(state);
   const validTargets = alive.filter((seat) => seat !== player);
+  const validTargetNames = validTargets.map((seat) => playerName(seat));
+
+  const voteSchema = createVoteSchema(validTargetNames);
 
   for (let attempt = 0; attempt < MAX_SEMANTIC_RETRIES; attempt++) {
     const result = await generateText({
       model: playerModel(player),
       providerOptions: playerProviderOptions(player),
-      output: Output.object({ schema: VoteSchema }),
+      output: Output.object({ schema: voteSchema }),
       system: playerSystemPrompt(state, player),
       prompt: voteUserPrompt(state, player),
       maxRetries: 2,
     });
 
     const output = extractOutput(result, playerModelId(player));
-    const target = output.targetPlayer as SeatNumber;
-    if (validTargets.includes(target)) {
+    const targetName = output.targetPlayer;
+    if (validTargetNames.includes(targetName)) {
+      const targetSeat = seatForName(targetName);
       return {
-        output,
+        output: { targetPlayer: targetSeat },
         reasoning: result.reasoningText ?? "",
-        actionSummary: `Voted for ${playerName(target)}`,
+        actionSummary: `Voted for ${targetName}`,
       };
     }
 
     console.warn(
-      `[Player ${player}] Invalid vote target ${target} (attempt ${attempt + 1}/${MAX_SEMANTIC_RETRIES}). Valid: ${validTargets.join(", ")}`,
+      `[${playerName(player)}] Invalid vote target "${targetName}" (attempt ${attempt + 1}/${MAX_SEMANTIC_RETRIES}). Valid: ${validTargetNames.join(", ")}`,
     );
   }
 
   // Fallback: random valid target
   const fallbackTarget = validTargets[Math.floor(Math.random() * validTargets.length)];
   console.warn(
-    `[Player ${player}] All vote attempts invalid. Falling back to random target: ${fallbackTarget}`,
+    `[${playerName(player)}] All vote attempts invalid. Falling back to random target: ${playerName(fallbackTarget)}`,
   );
 
   return {

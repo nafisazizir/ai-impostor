@@ -8,7 +8,6 @@ import { type XaiLanguageModelResponsesOptions } from "@ai-sdk/xai";
 import type { IconProps } from "@/components/icons/player-icons";
 import {
   OpenAIIcon,
-  AlibabaIcon,
   GoogleIcon,
   MetaIcon,
   MistralIcon,
@@ -156,4 +155,23 @@ export function playerName(seat: SeatNumber): string {
 
 export function playerLogo(seat: SeatNumber): ComponentType<IconProps> {
   return PLAYERS[seat].logo;
+}
+
+const nameToSeat = new Map<string, SeatNumber>(
+  (Object.entries(PLAYERS) as [string, PlayerConfig][]).map(([seat, cfg]) => [
+    cfg.model,
+    Number(seat) as SeatNumber,
+  ]),
+);
+
+export function seatForName(name: string): SeatNumber {
+  const seat = nameToSeat.get(name);
+  if (seat === undefined) {
+    throw new Error(`Unknown player name: "${name}"`);
+  }
+  return seat;
+}
+
+export function allPlayerNames(): string[] {
+  return Object.values(PLAYERS).map((cfg) => cfg.model);
 }

@@ -98,7 +98,7 @@ export function hostWordPairUserPrompt(): string {
 // ---------------------------------------------------------------------------
 
 function playerLabel(seat: SeatNumber): string {
-  return `Player ${seat} (${playerName(seat)})`;
+  return playerName(seat);
 }
 
 export function gameContextSummary(state: GameState, player: SeatNumber): string {
@@ -310,7 +310,7 @@ export function voteUserPrompt(state: GameState, player: SeatNumber): string {
   const validTargets = alive.filter((seat) => seat !== player);
 
   const targetList = validTargets
-    .map((seat) => `  - Player ${seat} (${playerName(seat)})`)
+    .map((seat) => `  - ${playerName(seat)}`)
     .join("\n");
 
   return `${context}
@@ -319,7 +319,7 @@ It's time to vote. Choose ONE player to eliminate.
 You MUST vote for one of the following players (you cannot vote for yourself):
 ${targetList}
 
-Respond with the player number (1-6) of the player you want to eliminate.`;
+Respond with the model name of the player you want to eliminate.`;
 }
 
 export function mrWhiteGuessUserPrompt(state: GameState, player: SeatNumber): string {
