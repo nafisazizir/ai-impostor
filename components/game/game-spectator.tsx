@@ -64,6 +64,7 @@ function LiveSpectator() {
     status,
     error,
     streamingThinking,
+    streamingAnswer,
     startGame,
   } = useGameStream();
 
@@ -94,6 +95,7 @@ function LiveSpectator() {
       activeSeat={activeSeat}
       thinking={thinking}
       streamingThinking={streamingThinking}
+      streamingAnswer={streamingAnswer}
       isFinished={status === "finished"}
       onNewGame={startGame}
     />
@@ -104,7 +106,7 @@ function LiveSpectator() {
 
 import type { GameState } from "@/lib/game/state";
 import type { SeatNumber, ThinkingEntry } from "@/lib/game/types";
-import type { StreamingThinking } from "@/hooks/use-game-stream";
+import type { StreamingThinking, StreamingAnswer } from "@/hooks/use-game-stream";
 import { Button } from "@/components/ui/button";
 
 type SpectatorShellProps = {
@@ -112,6 +114,7 @@ type SpectatorShellProps = {
   activeSeat: SeatNumber | null;
   thinking: ThinkingEntry[];
   streamingThinking?: StreamingThinking | null;
+  streamingAnswer?: StreamingAnswer | null;
   isFinished: boolean;
   onNewGame: () => void;
 };
@@ -121,6 +124,7 @@ function SpectatorShell({
   activeSeat,
   thinking,
   streamingThinking,
+  streamingAnswer,
   isFinished,
   onNewGame,
 }: SpectatorShellProps) {
@@ -149,6 +153,7 @@ function SpectatorShell({
       <ThinkingPanel
         thinking={thinking}
         streamingThinking={streamingThinking}
+        streamingAnswer={streamingAnswer}
       />
     </div>
   );

@@ -76,6 +76,33 @@ export function pushThinkingEnd(
   }
 }
 
+export function pushAnswerStart(
+  gameId: string,
+  data: { seat: SeatNumber; kind: string },
+): void {
+  const entry = games.get(gameId);
+  if (!entry) return;
+  for (const listener of entry.listeners) {
+    sendEvent(listener.controller, "answer:start", data);
+  }
+}
+
+export function pushAnswerDelta(gameId: string, text: string): void {
+  const entry = games.get(gameId);
+  if (!entry) return;
+  for (const listener of entry.listeners) {
+    sendEvent(listener.controller, "answer:delta", { text });
+  }
+}
+
+export function pushAnswerEnd(gameId: string): void {
+  const entry = games.get(gameId);
+  if (!entry) return;
+  for (const listener of entry.listeners) {
+    sendEvent(listener.controller, "answer:end", {});
+  }
+}
+
 export function finishGame(gameId: string): void {
   const entry = games.get(gameId);
   if (!entry) return;

@@ -23,6 +23,13 @@ export type StreamingThinking = {
   isStreaming: boolean;
 };
 
+export type StreamingAnswer = {
+  seat: SeatNumber;
+  kind: string;
+  text: string;
+  isStreaming: boolean;
+};
+
 export type GameStreamState = {
   snapshots: GameSnapshot[];
   currentIndex: number;
@@ -31,6 +38,7 @@ export type GameStreamState = {
   gameId: string | null;
   autoFollow: boolean;
   streamingThinking: StreamingThinking | null;
+  streamingAnswer: StreamingAnswer | null;
 };
 
 export type GameStreamActions = {
@@ -50,8 +58,11 @@ export function useGameStream(): GameStreamState & GameStreamActions {
   const [autoFollow, setAutoFollow] = useState(true);
   const [streamingThinking, setStreamingThinking] =
     useState<StreamingThinking | null>(null);
+  const [streamingAnswer, setStreamingAnswer] =
+    useState<StreamingAnswer | null>(null);
 
   const streamingThinkingRef = useRef<StreamingThinking | null>(null);
+  const streamingAnswerRef = useRef<StreamingAnswer | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const snapshotsRef = useRef<GameSnapshot[]>([]);
   const gameIdRef = useRef<string | null>(null);
@@ -64,6 +75,13 @@ export function useGameStream(): GameStreamState & GameStreamActions {
     if (!current) return;
     current.text = displayed;
     setStreamingThinking({ ...current });
+  });
+
+  const answerTypewriter = useTypewriterBuffer((displayed) => {
+    const current = streamingAnswerRef.current;
+    if (!current) return;
+    current.text = displayed;
+    setStreamingAnswer({ ...current });
   });
 
   const MAX_RETRIES = 3;
@@ -109,10 +127,13 @@ export function useGameStream(): GameStreamState & GameStreamActions {
         const snapshot = JSON.parse(e.data) as GameSnapshot;
         snapshotsRef.current = [...snapshotsRef.current, snapshot];
         setSnapshots(snapshotsRef.current);
-        // Flush any buffered typewriter text, then clear streaming thinking
+        // Flush any buffered typewriter text, then clear streaming state
         typewriter.flush();
+        answerTypewriter.flush();
         streamingThinkingRef.current = null;
         setStreamingThinking(null);
+        streamingAnswerRef.current = null;
+        setStreamingAnswer(null);
         // Auto-follow: advance to latest.
         // Capture length now — if we read snapshotsRef inside the callback,
         // rapid back-to-back snapshots (elimination phase) all see the same
@@ -164,6 +185,39 @@ export function useGameStream(): GameStreamState & GameStreamActions {
         });
       });
 
+      es.addEventListener("answer:start", (e) => {
+        const data = JSON.parse(e.data) as {
+          seat: SeatNumber;
+          kind: string;
+        };
+        answerTypewriter.start();
+        const entry: StreamingAnswer = {
+          seat: data.seat,
+          kind: data.kind,
+          text: "",
+          isStreaming: true,
+        };
+        streamingAnswerRef.current = entry;
+        setStreamingAnswer({ ...entry });
+      });
+
+      es.addEventListener("answer:delta", (e) => {
+        const data = JSON.parse(e.data) as { text: string };
+        if (!streamingAnswerRef.current) return;
+        answerTypewriter.push(data.text);
+      });
+
+      es.addEventListener("answer:end", () => {
+        const current = streamingAnswerRef.current;
+        if (!current) return;
+        answerTypewriter.onComplete(() => {
+          const cur = streamingAnswerRef.current;
+          if (!cur) return;
+          cur.isStreaming = false;
+          setStreamingAnswer({ ...cur });
+        });
+      });
+
       es.addEventListener("finished", () => {
         setStatus("finished");
         statusRef.current = "finished";
@@ -208,7 +262,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
         setError("Connection lost");
       };
     },
-    [cleanup, typewriter],
+    [cleanup, typewriter, answerTypewriter],
   );
 
   const startGame = useCallback(() => {
@@ -221,10 +275,13 @@ export function useGameStream(): GameStreamState & GameStreamActions {
     statusRef.current = "idle";
     retryCountRef.current = 0;
     typewriter.start();
+    answerTypewriter.start();
     streamingThinkingRef.current = null;
     setStreamingThinking(null);
+    streamingAnswerRef.current = null;
+    setStreamingAnswer(null);
     connect("/api/game/stream?action=new");
-  }, [connect, typewriter]);
+  }, [connect, typewriter, answerTypewriter]);
 
   const goTo = useCallback(
     (index: number) => {
@@ -273,6 +330,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
     gameId,
     autoFollow,
     streamingThinking,
+    streamingAnswer,
     startGame,
     goTo,
     goToLatest,

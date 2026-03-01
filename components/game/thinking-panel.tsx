@@ -3,7 +3,10 @@
 import { useEffect, useRef } from "react";
 
 import type { ThinkingEntry } from "@/lib/game/types";
-import type { StreamingThinking } from "@/hooks/use-game-stream";
+import type {
+  StreamingThinking,
+  StreamingAnswer,
+} from "@/hooks/use-game-stream";
 import { playerName } from "@/lib/game/players";
 import { PlayerIcon } from "@/components/icons/player-icons";
 import { cn } from "@/lib/utils";
@@ -13,6 +16,17 @@ const PHASE_LABEL: Record<string, string> = {
   discussion: "Discussion",
   vote: "Vote",
   elimination: "Elimination",
+};
+
+const ANSWER_PREFIX: Record<string, string> = {
+  clue: 'Gave clue: "',
+  discussion: 'Said: "',
+  mr_white_guess: 'Guessed: "',
+};
+const ANSWER_SUFFIX: Record<string, string> = {
+  clue: '"',
+  discussion: '"',
+  mr_white_guess: '"',
 };
 
 function entryLabel(entry: ThinkingEntry): string {
@@ -45,16 +59,18 @@ function shouldShowHeader(entries: ThinkingEntry[], i: number): boolean {
 export function ThinkingPanel({
   thinking,
   streamingThinking,
+  streamingAnswer,
 }: {
   thinking: ThinkingEntry[];
   streamingThinking?: StreamingThinking | null;
+  streamingAnswer?: StreamingAnswer | null;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [thinking.length, streamingThinking?.text]);
+  }, [thinking.length, streamingThinking?.text, streamingAnswer?.text]);
 
   return (
     <div
@@ -136,10 +152,21 @@ export function ThinkingPanel({
               >
                 {streamingThinking.text}
               </p>
-              {streamingThinking.actionSummary && (
-                <p className="text-muted-foreground mt-0.5 font-mono text-xs">
-                  {streamingThinking.actionSummary}
+              {/* Streaming answer with inline prefix — matches actionSummary format */}
+              {streamingAnswer?.text ? (
+                <p className="text-muted-foreground mt-0.5 font-mono text-xs leading-tight whitespace-pre-wrap">
+                  {ANSWER_PREFIX[streamingAnswer.kind]}
+                  {streamingAnswer.text}
+                  {!streamingAnswer.isStreaming &&
+                    ANSWER_SUFFIX[streamingAnswer.kind]}
                 </p>
+              ) : (
+                /* Vote / phases with no streaming answer — show actionSummary directly */
+                streamingThinking.actionSummary && (
+                  <p className="text-muted-foreground mt-0.5 font-mono text-xs">
+                    {streamingThinking.actionSummary}
+                  </p>
+                )
               )}
             </div>
           )}

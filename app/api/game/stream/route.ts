@@ -4,6 +4,9 @@ import {
   pushThinkingStart,
   pushThinkingDelta,
   pushThinkingEnd,
+  pushAnswerStart,
+  pushAnswerDelta,
+  pushAnswerEnd,
   finishGame,
   failGame,
   addListener,
@@ -147,6 +150,9 @@ export async function GET(request: Request) {
         onThinkingStart: (data) => pushThinkingStart(gameId, data),
         onThinkingDelta: (text) => pushThinkingDelta(gameId, text),
         onThinkingEnd: (summary) => pushThinkingEnd(gameId, summary),
+        onAnswerStart: (data) => pushAnswerStart(gameId, data),
+        onAnswerDelta: (text) => pushAnswerDelta(gameId, text),
+        onAnswerEnd: () => pushAnswerEnd(gameId),
       })
         .then(() => {
           clearInterval(heartbeat);

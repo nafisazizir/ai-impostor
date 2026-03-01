@@ -55,6 +55,12 @@ export type StreamRunGameOptions = {
   }) => void;
   onThinkingDelta?: (text: string) => void;
   onThinkingEnd?: (actionSummary: string) => void;
+  onAnswerStart?: (data: {
+    seat: SeatNumber;
+    kind: "clue" | "discussion" | "mr_white_guess";
+  }) => void;
+  onAnswerDelta?: (text: string) => void;
+  onAnswerEnd?: () => void;
 };
 
 export type StreamGameRunResult = {
@@ -124,6 +130,21 @@ export async function runStreamGame(
     options?.onThinkingEnd?.(actionSummary);
   }
 
+  function emitAnswerStart(
+    seat: SeatNumber,
+    kind: "clue" | "discussion" | "mr_white_guess",
+  ): void {
+    options?.onAnswerStart?.({ seat, kind });
+  }
+
+  function emitAnswerDelta(text: string): void {
+    options?.onAnswerDelta?.(text);
+  }
+
+  function emitAnswerEnd(): void {
+    options?.onAnswerEnd?.();
+  }
+
   // 1. Generate word pair from host model
   console.log(`[${gameId}] Generating word pair...`);
   const wordPairResult = await withRetry(
@@ -161,10 +182,18 @@ export async function runStreamGame(
       const prev = thinking.length;
       emitThinkingStart(seat, state);
       const result = await withRetry(
-        () =>
-          streamClue(state, seat, (delta) => emitThinkingDelta(delta)),
+        () => {
+          emitAnswerStart(seat, "clue");
+          return streamClue(
+            state,
+            seat,
+            (delta) => emitThinkingDelta(delta),
+            (delta) => emitAnswerDelta(delta),
+          );
+        },
         `${gameId} P${seat} clue`,
       );
+      emitAnswerEnd();
       emitThinkingEnd(result.actionSummary);
       pushThinking(thinking, seat, state, result);
       state = submitClue(state, { seat, text: result.output.clue });
@@ -184,19 +213,31 @@ export async function runStreamGame(
         emitThinkingStart(seat, state, pass);
         try {
           result = await withRetry(
-            () =>
-              streamDiscussionMessage(state, seat, (delta) =>
-                emitThinkingDelta(delta),
-              ),
+            () => {
+              emitAnswerStart(seat, "discussion");
+              return streamDiscussionMessage(
+                state,
+                seat,
+                (delta) => emitThinkingDelta(delta),
+                (delta) => emitAnswerDelta(delta),
+              );
+            },
             `${gameId} P${seat} discussion`,
           );
+          emitAnswerEnd();
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           console.error(
             `[${gameId}] P${seat} discussion failed after retries: ${msg}`,
           );
+          const fallbackText = "I need more time to think about this.";
+          emitAnswerStart(seat, "discussion");
+          for (const ch of fallbackText) {
+            emitAnswerDelta(ch);
+          }
+          emitAnswerEnd();
           result = {
-            output: { message: "I need more time to think about this." },
+            output: { message: fallbackText },
             reasoning: "(fallback: AI generation failed)",
             actionSummary: `Discussion failed — used fallback`,
           };
@@ -272,12 +313,18 @@ export async function runStreamGame(
       const prev = thinking.length;
       emitThinkingStart(eliminatedSeat, state);
       const guessResult = await withRetry(
-        () =>
-          streamMrWhiteGuess(state, eliminatedSeat, (delta) =>
-            emitThinkingDelta(delta),
-          ),
+        () => {
+          emitAnswerStart(eliminatedSeat, "mr_white_guess");
+          return streamMrWhiteGuess(
+            state,
+            eliminatedSeat,
+            (delta) => emitThinkingDelta(delta),
+            (delta) => emitAnswerDelta(delta),
+          );
+        },
         `${gameId} P${eliminatedSeat} mr-white-guess`,
       );
+      emitAnswerEnd();
       emitThinkingEnd(guessResult.actionSummary);
       pushThinking(thinking, eliminatedSeat, state, guessResult);
       state = resolveMrWhiteGuess(state, guessResult.output.guess);

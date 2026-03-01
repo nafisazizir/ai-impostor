@@ -32,15 +32,38 @@ import type { ActionResult } from "@/lib/ai/actions";
 
 type OnReasoningDelta = (text: string) => void;
 
-async function drainReasoning(
+type StreamCallbacks = {
+  onReasoningDelta?: OnReasoningDelta;
+  onAnswerDelta?: (text: string) => void;
+  answerField?: string;
+};
+
+async function drainStream(
   result: ReturnType<typeof streamText>,
-  onReasoningDelta?: OnReasoningDelta,
+  callbacks?: StreamCallbacks,
 ): Promise<void> {
-  for await (const part of result.fullStream) {
-    if (part.type === "reasoning-delta") {
-      onReasoningDelta?.(part.text);
-    }
-  }
+  await Promise.all([
+    (async () => {
+      for await (const part of result.fullStream) {
+        if (part.type === "reasoning-delta") {
+          callbacks?.onReasoningDelta?.(part.text);
+        }
+      }
+    })(),
+    (async () => {
+      if (!callbacks?.onAnswerDelta || !callbacks?.answerField) return;
+      let prev = "";
+      for await (const partial of result.partialOutputStream) {
+        const val = (partial as Record<string, unknown>)?.[
+          callbacks.answerField
+        ];
+        if (typeof val === "string" && val.length > prev.length) {
+          callbacks.onAnswerDelta(val.slice(prev.length));
+          prev = val;
+        }
+      }
+    })(),
+  ]);
 }
 
 /**
@@ -111,7 +134,7 @@ export async function streamWordPair(
     maxRetries: 2,
   });
 
-  await drainReasoning(result, onReasoningDelta);
+  await drainStream(result, { onReasoningDelta });
 
   const { output, reasoningText } = await resolveOutput(
     result,
@@ -130,6 +153,7 @@ export async function streamClue(
   state: GameState,
   player: SeatNumber,
   onReasoningDelta?: OnReasoningDelta,
+  onAnswerDelta?: (text: string) => void,
 ): Promise<ActionResult<{ clue: string }>> {
   const result = streamText({
     model: playerModel(player),
@@ -140,7 +164,11 @@ export async function streamClue(
     maxRetries: 2,
   });
 
-  await drainReasoning(result, onReasoningDelta);
+  await drainStream(result, {
+    onReasoningDelta,
+    onAnswerDelta,
+    answerField: "clue",
+  });
 
   const { output, reasoningText } = await resolveOutput(
     result,
@@ -159,6 +187,7 @@ export async function streamDiscussionMessage(
   state: GameState,
   player: SeatNumber,
   onReasoningDelta?: OnReasoningDelta,
+  onAnswerDelta?: (text: string) => void,
 ): Promise<ActionResult<{ message: string }>> {
   const result = streamText({
     model: playerModel(player),
@@ -169,7 +198,11 @@ export async function streamDiscussionMessage(
     maxRetries: 2,
   });
 
-  await drainReasoning(result, onReasoningDelta);
+  await drainStream(result, {
+    onReasoningDelta,
+    onAnswerDelta,
+    answerField: "message",
+  });
 
   const { output, reasoningText } = await resolveOutput(
     result,
@@ -201,7 +234,7 @@ export async function streamVote(
     maxRetries: 2,
   });
 
-  await drainReasoning(result, onReasoningDelta);
+  await drainStream(result, { onReasoningDelta });
 
   const label = playerModelId(player);
   const { output, reasoningText } = await resolveOutput(
@@ -227,6 +260,7 @@ export async function streamMrWhiteGuess(
   state: GameState,
   player: SeatNumber,
   onReasoningDelta?: OnReasoningDelta,
+  onAnswerDelta?: (text: string) => void,
 ): Promise<ActionResult<{ guess: string }>> {
   const result = streamText({
     model: playerModel(player),
@@ -237,7 +271,11 @@ export async function streamMrWhiteGuess(
     maxRetries: 2,
   });
 
-  await drainReasoning(result, onReasoningDelta);
+  await drainStream(result, {
+    onReasoningDelta,
+    onAnswerDelta,
+    answerField: "guess",
+  });
 
   const { output, reasoningText } = await resolveOutput(
     result,
