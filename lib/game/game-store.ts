@@ -1,4 +1,5 @@
 import type { GameSnapshot } from "@/lib/game/snapshot";
+import type { SeatNumber, GamePhase } from "@/lib/game/types";
 
 type Listener = {
   controller: ReadableStreamDefaultController;
@@ -42,6 +43,36 @@ export function pushSnapshot(gameId: string, snapshot: GameSnapshot): void {
   entry.snapshots.push(snapshot);
   for (const listener of entry.listeners) {
     sendEvent(listener.controller, "snapshot", snapshot);
+  }
+}
+
+export function pushThinkingStart(
+  gameId: string,
+  data: { seat: SeatNumber; phase: GamePhase; round: number; pass?: number },
+): void {
+  const entry = games.get(gameId);
+  if (!entry) return;
+  for (const listener of entry.listeners) {
+    sendEvent(listener.controller, "thinking:start", data);
+  }
+}
+
+export function pushThinkingDelta(gameId: string, text: string): void {
+  const entry = games.get(gameId);
+  if (!entry) return;
+  for (const listener of entry.listeners) {
+    sendEvent(listener.controller, "thinking:delta", { text });
+  }
+}
+
+export function pushThinkingEnd(
+  gameId: string,
+  actionSummary: string,
+): void {
+  const entry = games.get(gameId);
+  if (!entry) return;
+  for (const listener of entry.listeners) {
+    sendEvent(listener.controller, "thinking:end", { actionSummary });
   }
 }
 

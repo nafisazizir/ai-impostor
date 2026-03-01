@@ -1,13 +1,16 @@
 import {
   createGame,
   pushSnapshot,
+  pushThinkingStart,
+  pushThinkingDelta,
+  pushThinkingEnd,
   finishGame,
   failGame,
   addListener,
   removeListener,
   getGame,
 } from "@/lib/game/game-store";
-import { runGame } from "@/lib/ai/runner";
+import { runStreamGame } from "@/lib/ai/stream-runner";
 
 export const maxDuration = 300;
 
@@ -139,10 +142,11 @@ export async function GET(request: Request) {
       });
 
       // Fire-and-forget: run the game
-      runGame(gameId, {
-        onSnapshot: (snapshot) => {
-          pushSnapshot(gameId, snapshot);
-        },
+      runStreamGame(gameId, {
+        onSnapshot: (snapshot) => pushSnapshot(gameId, snapshot),
+        onThinkingStart: (data) => pushThinkingStart(gameId, data),
+        onThinkingDelta: (text) => pushThinkingDelta(gameId, text),
+        onThinkingEnd: (summary) => pushThinkingEnd(gameId, summary),
       })
         .then(() => {
           clearInterval(heartbeat);
