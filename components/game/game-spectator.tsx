@@ -148,7 +148,6 @@ function SpectatorShell({
 
       <ThinkingPanel
         thinking={thinking}
-        activeSeat={activeSeat}
         streamingThinking={streamingThinking}
       />
     </div>

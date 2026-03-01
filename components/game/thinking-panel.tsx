@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 
 import type { ThinkingEntry } from "@/lib/game/types";
-import type { SeatNumber } from "@/lib/game/types";
 import type { StreamingThinking } from "@/hooks/use-game-stream";
 import { playerName } from "@/lib/game/players";
 import { PlayerIcon } from "@/components/icons/player-icons";
@@ -45,11 +44,9 @@ function shouldShowHeader(entries: ThinkingEntry[], i: number): boolean {
 
 export function ThinkingPanel({
   thinking,
-  activeSeat,
   streamingThinking,
 }: {
   thinking: ThinkingEntry[];
-  activeSeat: SeatNumber | null;
   streamingThinking?: StreamingThinking | null;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -58,10 +55,6 @@ export function ThinkingPanel({
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [thinking.length, streamingThinking?.text]);
-
-  const lastEntry = thinking.length > 0 ? thinking[thinking.length - 1] : null;
-  const headerSeat =
-    streamingThinking?.seat ?? activeSeat ?? lastEntry?.seat ?? null;
 
   return (
     <div
@@ -73,30 +66,6 @@ export function ThinkingPanel({
         "border-border h-[25vh] border-t md:h-auto md:max-h-none md:border-t-0",
       )}
     >
-      {/* Header */}
-      <div className="flex shrink-0 items-center gap-2 px-3 py-2">
-        {headerSeat ? (
-          <>
-            <PlayerIcon
-              seat={headerSeat}
-              className="text-muted-foreground size-4.5"
-            />
-            <span className="truncate font-mono text-xs">
-              {playerName(headerSeat)}
-            </span>
-            {lastEntry && (
-              <span className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 font-mono text-[10px] tracking-wider uppercase">
-                {entryLabel(lastEntry)}
-              </span>
-            )}
-          </>
-        ) : (
-          <span className="text-muted-foreground font-mono text-xs">
-            Waiting for next move...
-          </span>
-        )}
-      </div>
-
       {/* Content */}
       <div
         ref={scrollRef}
@@ -144,8 +113,16 @@ export function ThinkingPanel({
                   seat={streamingThinking.seat}
                   className="text-muted-foreground size-3.5"
                 />
-                <span className="text-muted-foreground font-mono text-xs">
-                  {playerName(streamingThinking.seat)}
+                <span className="font-mono text-xs">
+                  <span
+                    className={cn(
+                      streamingThinking.isStreaming
+                        ? "animate-thinking"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {playerName(streamingThinking.seat)}
+                  </span>
                   <span className="text-muted-foreground/60 ml-2">
                     {streamingEntryLabel(streamingThinking)}
                   </span>
