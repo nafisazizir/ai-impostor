@@ -75,6 +75,10 @@ export type GameOutcome =
   | {
       winner: "mr_white";
       reason: "final_guess_correct";
+    }
+  | {
+      winner: "mr_white";
+      reason: "reached_final_two";
     };
 
 export type ThinkingEntry = {

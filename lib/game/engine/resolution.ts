@@ -109,6 +109,13 @@ export function evaluateWinCondition(
     };
   }
 
+  if (mrWhiteAlive && state.aliveSeats.length <= 2) {
+    return {
+      winner: "mr_white",
+      reason: "reached_final_two",
+    };
+  }
+
   return null;
 }
 

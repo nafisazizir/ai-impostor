@@ -195,6 +195,29 @@ describe("round resolution and elimination handling", () => {
     });
   });
 
+  it("Mr. White wins when elimination brings alive count to 2 with mr_white still alive", () => {
+    const now = createNowFactory();
+    // Impostor (seat 5) already eliminated; seats 1, 2, 6 remain (civilian, civilian, mr_white)
+    const state = withControlledTableState({
+      currentPhase: "elimination",
+      currentRound: 3,
+      aliveSeats: [1, 2, 6] satisfies SeatNumber[],
+      eliminations: [
+        { round: 1, seat: 5, role: "impostor" as const },
+        { round: 2, seat: 3, role: "civilian" as const },
+      ],
+    });
+
+    // Eliminate civilian seat 1 → only seats 2 (civilian) and 6 (mr_white) remain
+    const next = applyElimination(state, { eliminatedSeat: 1, reason: "plurality" }, now);
+    expect(next.aliveSeats).toEqual([2, 6]);
+    expect(next.currentPhase).toBe("finished");
+    expect(next.outcome).toEqual({
+      winner: "mr_white",
+      reason: "reached_final_two",
+    });
+  });
+
   it("supports Mr. White guess flow after Mr. White elimination", () => {
     const now = createNowFactory();
     const state = withControlledTableState({
@@ -234,6 +257,16 @@ describe("win-condition branches", () => {
     });
     expect(evaluateWinCondition(state)).toEqual({
       winner: "impostor",
+      reason: "reached_final_two",
+    });
+  });
+
+  it("returns Mr. White when final two includes mr_white (impostor already eliminated)", () => {
+    const state = withControlledTableState({
+      aliveSeats: [2, 6] satisfies SeatNumber[],
+    });
+    expect(evaluateWinCondition(state)).toEqual({
+      winner: "mr_white",
       reason: "reached_final_two",
     });
   });
