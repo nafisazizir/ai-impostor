@@ -72,6 +72,7 @@ export async function generateWordPair(): Promise<ActionResult<WordPair>> {
     output: Output.object({ schema: WordPairSchema }),
     system: hostWordPairSystemPrompt(),
     prompt: hostWordPairUserPrompt(),
+    temperature: 1.2,
     maxRetries: 2,
   });
 

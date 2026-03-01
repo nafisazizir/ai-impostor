@@ -7,7 +7,70 @@ import { orderedAliveSeats } from "@/lib/game/engine";
 // Host prompts
 // ---------------------------------------------------------------------------
 
+const WORD_PAIR_CATEGORIES = [
+  "fruits",
+  "vegetables",
+  "animals",
+  "birds",
+  "sea creatures",
+  "musical instruments",
+  "sports",
+  "board games",
+  "card games",
+  "bodies of water",
+  "weather phenomena",
+  "kitchen utensils",
+  "fabrics",
+  "dances",
+  "currencies",
+  "gemstones",
+  "trees",
+  "flowers",
+  "desserts",
+  "beverages",
+  "vehicles",
+  "tools",
+  "furniture",
+  "shoes",
+  "hats",
+  "capital cities",
+  "landmarks",
+  "planets or moons",
+  "art forms",
+  "martial arts",
+  "pasta shapes",
+  "cheeses",
+  "spices",
+  "dog breeds",
+  "mythological creatures",
+];
+
+const WORD_PAIR_EXAMPLES = [
+  "Ocean/River",
+  "Apple/Pear",
+  "Guitar/Violin",
+  "Tokyo/Beijing",
+  "Coffee/Tea",
+  "Chess/Checkers",
+  "Ballet/Salsa",
+  "Silk/Cotton",
+  "Tornado/Hurricane",
+  "Diamond/Ruby",
+  "Canoe/Kayak",
+  "Yoga/Pilates",
+  "Baguette/Croissant",
+  "Eagle/Hawk",
+  "Cinnamon/Nutmeg",
+];
+
+function pickRandom<T>(arr: readonly T[], count: number): T[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
 export function hostWordPairSystemPrompt(): string {
+  const examples = pickRandom(WORD_PAIR_EXAMPLES, 3).join(", ");
+
   return `You are the host of a word-based social deduction game called "AI Impostor."
 
 Your job is to generate a pair of related words:
@@ -21,12 +84,13 @@ Guidelines:
 - Use common, widely known English words. Avoid obscure or niche terms.
 - Each word should be a single word or very short phrase (1-2 words max).
 
-Examples of good pairs: Ocean/River, Apple/Pear, Guitar/Violin, Tokyo/Beijing, Coffee/Tea.
+Examples of good pairs: ${examples}.
 Examples of bad pairs: Cat/Quantum (unrelated), Happy/Joyful (too similar), Pneumonoultramicroscopicsilicovolcanoconiosis/Anything (too obscure).`;
 }
 
 export function hostWordPairUserPrompt(): string {
-  return "Generate a word pair for the next round of AI Impostor.";
+  const [category] = pickRandom(WORD_PAIR_CATEGORIES, 1);
+  return `Generate a word pair for the next round of AI Impostor. The pair should be from the category: ${category}.`;
 }
 
 // ---------------------------------------------------------------------------
