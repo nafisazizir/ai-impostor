@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ThinkingEntry } from "@/lib/game/types";
 import type {
@@ -65,6 +65,12 @@ export function ThinkingPanel({
   streamingAnswer?: StreamingAnswer | null;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrolledDown, setScrolledDown] = useState(false);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) setScrolledDown(el.scrollTop > 4);
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -82,94 +88,109 @@ export function ThinkingPanel({
       )}
     >
       {/* Content */}
-      <div
-        ref={scrollRef}
-        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-3 pb-3"
-      >
-        <div className="flex flex-col gap-3">
-          {thinking.map((entry, i) => {
-            return (
-              <div
-                key={`${entry.seat}-${entry.phase}-${entry.round}-${i}`}
-                className="transition-opacity duration-300"
-              >
-                {/* Entry header — show when speaker, phase, or pass changes */}
-                {shouldShowHeader(thinking, i) && (() => {
-                  const Logo = playerLogo(entry.seat);
-                  return (
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="scrollbar-hide h-full overflow-y-auto px-3 pt-3 pb-3"
+        >
+          <div className="flex flex-col gap-3">
+            <p className="text-muted-foreground/40 font-mono text-xs">
+              Game started
+            </p>
+            {thinking.map((entry, i) => {
+              return (
+                <div
+                  key={`${entry.seat}-${entry.phase}-${entry.round}-${i}`}
+                  className="transition-opacity duration-300"
+                >
+                  {/* Entry header — show when speaker, phase, or pass changes */}
+                  {shouldShowHeader(thinking, i) &&
+                    (() => {
+                      const Logo = playerLogo(entry.seat);
+                      return (
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <Logo className="text-muted-foreground size-3.5" />
+                          <span className="text-muted-foreground font-mono text-xs">
+                            {playerName(entry.seat)}
+                            <span className="text-muted-foreground/60 ml-2">
+                              {entryLabel(entry)}
+                            </span>
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  <p className="text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap">
+                    {entry.text}
+                  </p>
+                  {entry.actionSummary && (
+                    <p className="text-muted-foreground mt-0.5 font-mono text-xs">
+                      {entry.actionSummary}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Live streaming thinking entry */}
+            {streamingThinking &&
+              (() => {
+                const Logo = playerLogo(streamingThinking.seat);
+                return (
+                  <div className="transition-opacity duration-300">
                     <div className="mb-1 flex items-center gap-1.5">
                       <Logo className="text-muted-foreground size-3.5" />
-                      <span className="text-muted-foreground font-mono text-xs">
-                        {playerName(entry.seat)}
+                      <span className="font-mono text-xs">
+                        <span
+                          className={cn(
+                            streamingThinking.isStreaming
+                              ? "animate-thinking"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {playerName(streamingThinking.seat)}
+                        </span>
                         <span className="text-muted-foreground/60 ml-2">
-                          {entryLabel(entry)}
+                          {streamingEntryLabel(streamingThinking)}
                         </span>
                       </span>
                     </div>
-                  );
-                })()}
-                <p className="text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap">
-                  {entry.text}
-                </p>
-                {entry.actionSummary && (
-                  <p className="text-muted-foreground mt-0.5 font-mono text-xs">
-                    {entry.actionSummary}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Live streaming thinking entry */}
-          {streamingThinking && (() => {
-            const Logo = playerLogo(streamingThinking.seat);
-            return (
-              <div className="transition-opacity duration-300">
-                <div className="mb-1 flex items-center gap-1.5">
-                  <Logo className="text-muted-foreground size-3.5" />
-                  <span className="font-mono text-xs">
-                    <span
+                    <p
                       className={cn(
-                        streamingThinking.isStreaming
-                          ? "animate-thinking"
-                          : "text-muted-foreground",
+                        "text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap",
+                        streamingThinking.isStreaming,
                       )}
                     >
-                      {playerName(streamingThinking.seat)}
-                    </span>
-                    <span className="text-muted-foreground/60 ml-2">
-                      {streamingEntryLabel(streamingThinking)}
-                    </span>
-                  </span>
-                </div>
-                <p
-                  className={cn(
-                    "text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap",
-                    streamingThinking.isStreaming,
-                  )}
-                >
-                  {streamingThinking.text}
-                </p>
-                {/* Streaming answer with inline prefix — matches actionSummary format */}
-                {streamingAnswer?.text ? (
-                  <p className="text-muted-foreground mt-0.5 font-mono text-xs leading-tight whitespace-pre-wrap">
-                    {ANSWER_PREFIX[streamingAnswer.kind]}
-                    {streamingAnswer.text}
-                    {!streamingAnswer.isStreaming &&
-                      ANSWER_SUFFIX[streamingAnswer.kind]}
-                  </p>
-                ) : (
-                  /* Vote / phases with no streaming answer — show actionSummary directly */
-                  streamingThinking.actionSummary && (
-                    <p className="text-muted-foreground mt-0.5 font-mono text-xs">
-                      {streamingThinking.actionSummary}
+                      {streamingThinking.text}
                     </p>
-                  )
-                )}
-              </div>
-            );
-          })()}
+                    {/* Streaming answer with inline prefix — matches actionSummary format */}
+                    {streamingAnswer?.text ? (
+                      <p className="text-muted-foreground mt-0.5 font-mono text-xs leading-tight whitespace-pre-wrap">
+                        {ANSWER_PREFIX[streamingAnswer.kind]}
+                        {streamingAnswer.text}
+                        {!streamingAnswer.isStreaming &&
+                          ANSWER_SUFFIX[streamingAnswer.kind]}
+                      </p>
+                    ) : (
+                      /* Vote / phases with no streaming answer — show actionSummary directly */
+                      streamingThinking.actionSummary && (
+                        <p className="text-muted-foreground mt-0.5 font-mono text-xs">
+                          {streamingThinking.actionSummary}
+                        </p>
+                      )
+                    )}
+                  </div>
+                );
+              })()}
+          </div>
         </div>
+        {/* Top-fade gradient overlay — hidden when scrolled to top */}
+        <div
+          className={cn(
+            "pointer-events-none absolute top-0 right-0 left-0 z-10 h-8 bg-linear-to-b from-black to-transparent",
+            scrolledDown ? "opacity-100" : "opacity-0",
+          )}
+        />
       </div>
     </div>
   );
