@@ -11,9 +11,7 @@ import { GameHeader } from "@/components/game/game-header";
 import { SeatRing } from "@/components/game/seat-ring";
 import { ThinkingPanel } from "@/components/game/thinking-panel";
 
-type Props =
-  | { mode: "mock"; snapshots: MockSnapshot[] }
-  | { mode: "live" };
+type Props = { mode: "mock"; snapshots: MockSnapshot[] } | { mode: "live" };
 
 export function GameSpectator(props: Props) {
   if (props.mode === "mock") {
@@ -121,6 +119,7 @@ function LiveSpectator() {
 import type { GameState } from "@/lib/game/state";
 import type { SeatNumber, ThinkingEntry } from "@/lib/game/types";
 import type { GameStreamStatus } from "@/hooks/use-game-stream";
+import { Button } from "@/components/ui/button";
 
 type SpectatorShellProps = {
   state: GameState;
@@ -200,7 +199,9 @@ function SpectatorShell({
             {!isLive && onToggleAutoReplay !== undefined && (
               <button
                 onClick={onToggleAutoReplay}
-                aria-label={autoReplay ? "Pause auto-replay" : "Start auto-replay"}
+                aria-label={
+                  autoReplay ? "Pause auto-replay" : "Start auto-replay"
+                }
                 className={DEV_BUTTON_CLASS}
               >
                 {autoReplay ? "Pause" : "Play"}
@@ -251,12 +252,13 @@ function IdleScreen({ onStart }: { onStart: () => void }) {
       <p className="text-muted-foreground text-sm">
         6 AI models. 1 secret word. Who&apos;s the impostor?
       </p>
-      <button
+      <Button
         onClick={onStart}
-        className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-6 py-3 text-sm font-medium transition-colors"
+        className={"hover:bg-primary/80 cursor-pointer"}
+        size={"lg"}
       >
         Start Game
-      </button>
+      </Button>
     </div>
   );
 }
@@ -282,15 +284,14 @@ function ErrorScreen({
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-6">
       <GameHeader />
-      <p className="text-sm text-red-400">
-        {error ?? "Something went wrong"}
-      </p>
-      <button
+      <p className="text-sm text-red-400">{error ?? "Something went wrong"}</p>
+      <Button
         onClick={onRetry}
-        className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-6 py-3 text-sm font-medium transition-colors"
+        className={"hover:bg-primary/80 cursor-pointer"}
+        size={"lg"}
       >
         Try Again
-      </button>
+      </Button>
     </div>
   );
 }
