@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { MockSnapshot } from "@/lib/game/mock-states";
 import type { GameSnapshot } from "@/lib/game/snapshot";
@@ -24,23 +24,24 @@ export function GameSpectator(props: Props) {
 
 function MockSpectator({ snapshots }: { snapshots: MockSnapshot[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [autoReplay, setAutoReplay] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const next = useCallback(() => {
-    setCurrentIndex((i) => (i + 1) % snapshots.length);
-  }, [snapshots.length]);
+  const isFinished = currentIndex >= snapshots.length - 1;
 
-  const prev = useCallback(() => {
-    setCurrentIndex((i) => (i - 1 + snapshots.length) % snapshots.length);
-  }, [snapshots.length]);
-
+  // Auto-advance with 2s delay, stop at last snapshot
   useEffect(() => {
-    if (!autoReplay) return;
-    const interval = setInterval(next, 2000);
-    return () => clearInterval(interval);
-  }, [autoReplay, next]);
+    if (isFinished) return;
+    timerRef.current = setTimeout(() => {
+      setCurrentIndex((i) => i + 1);
+    }, 2000);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [currentIndex, isFinished]);
 
-  const { state, label, thinking } = snapshots[currentIndex];
+  const restart = () => setCurrentIndex(0);
+
+  const { state, thinking } = snapshots[currentIndex];
   const activeSeat = deriveActiveSeat(state);
 
   return (
@@ -48,13 +49,8 @@ function MockSpectator({ snapshots }: { snapshots: MockSnapshot[] }) {
       state={state}
       activeSeat={activeSeat}
       thinking={thinking}
-      label={label}
-      currentIndex={currentIndex}
-      totalSnapshots={snapshots.length}
-      onPrev={prev}
-      onNext={next}
-      autoReplay={autoReplay}
-      onToggleAutoReplay={() => setAutoReplay((v) => !v)}
+      isFinished={isFinished}
+      onNewGame={restart}
     />
   );
 }
@@ -67,12 +63,8 @@ function LiveSpectator() {
     currentIndex,
     status,
     error,
-    autoFollow,
     streamingThinking,
     startGame,
-    prev,
-    next,
-    goToLatest,
   } = useGameStream();
 
   const snapshot: GameSnapshot | undefined = snapshots[currentIndex];
@@ -93,7 +85,7 @@ function LiveSpectator() {
     return <ConnectingScreen />;
   }
 
-  const { state, label, thinking } = snapshot;
+  const { state, thinking } = snapshot;
   const activeSeat = deriveActiveSeat(state);
 
   return (
@@ -101,16 +93,8 @@ function LiveSpectator() {
       state={state}
       activeSeat={activeSeat}
       thinking={thinking}
-      label={label}
-      currentIndex={currentIndex}
-      totalSnapshots={snapshots.length}
-      onPrev={prev}
-      onNext={next}
       streamingThinking={streamingThinking}
-      status={status}
-      error={error}
-      autoFollow={autoFollow}
-      onJumpToLive={goToLatest}
+      isFinished={status === "finished"}
       onNewGame={startGame}
     />
   );
@@ -120,126 +104,45 @@ function LiveSpectator() {
 
 import type { GameState } from "@/lib/game/state";
 import type { SeatNumber, ThinkingEntry } from "@/lib/game/types";
-import type { GameStreamStatus, StreamingThinking } from "@/hooks/use-game-stream";
+import type { StreamingThinking } from "@/hooks/use-game-stream";
 import { Button } from "@/components/ui/button";
 
 type SpectatorShellProps = {
   state: GameState;
   activeSeat: SeatNumber | null;
   thinking: ThinkingEntry[];
-  label: string;
-  currentIndex: number;
-  totalSnapshots: number;
-  onPrev: () => void;
-  onNext: () => void;
-  // Streaming thinking (live mode only)
   streamingThinking?: StreamingThinking | null;
-  // Mock mode controls
-  autoReplay?: boolean;
-  onToggleAutoReplay?: () => void;
-  // Live mode controls
-  status?: GameStreamStatus;
-  error?: string | null;
-  autoFollow?: boolean;
-  onJumpToLive?: () => void;
-  onNewGame?: () => void;
+  isFinished: boolean;
+  onNewGame: () => void;
 };
-
-const DEV_BUTTON_CLASS =
-  "text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring rounded px-1.5 py-0.5 text-xs touch-manipulation focus-visible:ring-2 focus-visible:ring-offset-1";
 
 function SpectatorShell({
   state,
   activeSeat,
   thinking,
-  label,
-  currentIndex,
-  totalSnapshots,
-  onPrev,
-  onNext,
   streamingThinking,
-  autoReplay,
-  onToggleAutoReplay,
-  status,
-  error,
-  autoFollow,
-  onJumpToLive,
+  isFinished,
   onNewGame,
 }: SpectatorShellProps) {
-  const isLive = status !== undefined;
-
   return (
     <div className="flex h-screen flex-col md:flex-row">
       {/* Left column: header + game area */}
       <div className="flex min-h-0 flex-1 flex-col">
         <GameHeader />
 
-        {/* Seat ring + controls */}
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
           <SeatRing state={state} activeSeat={activeSeat} />
 
-          {/* Controls bar */}
-          <div className="border-border bg-card/50 flex items-center gap-2 rounded-lg border px-3 py-1.5">
-            <span className="text-muted-foreground text-xs tabular-nums">
-              {currentIndex + 1}/{totalSnapshots}
-            </span>
-            <span className="text-muted-foreground text-xs">{label}</span>
-            <div className="bg-border mx-1 h-4 w-px" />
-            <button
-              onClick={onPrev}
-              aria-label="Previous snapshot"
-              className={DEV_BUTTON_CLASS}
+          {isFinished && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onNewGame}
+              className="text-muted-foreground cursor-pointer text-xs"
             >
-              Prev
-            </button>
-            <button
-              onClick={onNext}
-              aria-label="Next snapshot"
-              className={DEV_BUTTON_CLASS}
-            >
-              Next
-            </button>
-
-            {/* Mock-specific controls */}
-            {!isLive && onToggleAutoReplay !== undefined && (
-              <button
-                onClick={onToggleAutoReplay}
-                aria-label={
-                  autoReplay ? "Pause auto-replay" : "Start auto-replay"
-                }
-                className={DEV_BUTTON_CLASS}
-              >
-                {autoReplay ? "Pause" : "Play"}
-              </button>
-            )}
-
-            {/* Live-specific controls */}
-            {isLive && (
-              <>
-                {!autoFollow && onJumpToLive && (
-                  <button
-                    onClick={onJumpToLive}
-                    className="rounded bg-red-600 px-1.5 py-0.5 text-xs text-white hover:bg-red-500"
-                  >
-                    Jump to Live
-                  </button>
-                )}
-                {status === "streaming" && autoFollow && (
-                  <span className="text-xs text-red-400">LIVE</span>
-                )}
-                {status === "finished" && onNewGame && (
-                  <button onClick={onNewGame} className={DEV_BUTTON_CLASS}>
-                    New Game
-                  </button>
-                )}
-                {status === "error" && (
-                  <span className="text-xs text-red-400">
-                    Error{error ? `: ${error}` : ""}
-                  </span>
-                )}
-              </>
-            )}
-          </div>
+              Watch New Game
+            </Button>
+          )}
         </div>
       </div>
 

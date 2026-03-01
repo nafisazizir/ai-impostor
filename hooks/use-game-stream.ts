@@ -113,10 +113,14 @@ export function useGameStream(): GameStreamState & GameStreamActions {
         typewriter.flush();
         streamingThinkingRef.current = null;
         setStreamingThinking(null);
-        // Auto-follow: always advance to latest
+        // Auto-follow: advance to latest.
+        // Capture length now — if we read snapshotsRef inside the callback,
+        // rapid back-to-back snapshots (elimination phase) all see the same
+        // final length and the wasAtEnd check fails.
+        const newLength = snapshotsRef.current.length;
         setCurrentIndex((prev) => {
-          const wasAtEnd = prev >= snapshotsRef.current.length - 2;
-          return wasAtEnd ? snapshotsRef.current.length - 1 : prev;
+          const wasAtEnd = prev >= newLength - 2;
+          return wasAtEnd ? newLength - 1 : prev;
         });
       });
 
