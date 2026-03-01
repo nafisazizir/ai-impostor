@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z, type ZodLiteral } from "zod";
 
 export const WordPairSchema = z.object({
   civilianWord: z.string().describe("The word given to civilian players"),
@@ -26,3 +26,20 @@ export const VoteSchema = z.object({
 export const MrWhiteGuessSchema = z.object({
   guess: z.string().describe("Your guess for the civilian word"),
 });
+
+export function createVoteSchema(validTargets: number[]) {
+  const literals = validTargets.map((n) => z.literal(n));
+  return z.object({
+    targetPlayer: z
+      .union(
+        literals as [
+          ZodLiteral<number>,
+          ZodLiteral<number>,
+          ...ZodLiteral<number>[],
+        ],
+      )
+      .describe(
+        `The player number you vote to eliminate. Valid: ${validTargets.join(", ")}`,
+      ),
+  });
+}
