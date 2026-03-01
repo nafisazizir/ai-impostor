@@ -68,6 +68,7 @@ function LiveSpectator() {
     status,
     error,
     autoFollow,
+    streamingThinking,
     startGame,
     prev,
     next,
@@ -105,6 +106,7 @@ function LiveSpectator() {
       totalSnapshots={snapshots.length}
       onPrev={prev}
       onNext={next}
+      streamingThinking={streamingThinking}
       status={status}
       error={error}
       autoFollow={autoFollow}
@@ -118,7 +120,7 @@ function LiveSpectator() {
 
 import type { GameState } from "@/lib/game/state";
 import type { SeatNumber, ThinkingEntry } from "@/lib/game/types";
-import type { GameStreamStatus } from "@/hooks/use-game-stream";
+import type { GameStreamStatus, StreamingThinking } from "@/hooks/use-game-stream";
 import { Button } from "@/components/ui/button";
 
 type SpectatorShellProps = {
@@ -130,6 +132,8 @@ type SpectatorShellProps = {
   totalSnapshots: number;
   onPrev: () => void;
   onNext: () => void;
+  // Streaming thinking (live mode only)
+  streamingThinking?: StreamingThinking | null;
   // Mock mode controls
   autoReplay?: boolean;
   onToggleAutoReplay?: () => void;
@@ -153,6 +157,7 @@ function SpectatorShell({
   totalSnapshots,
   onPrev,
   onNext,
+  streamingThinking,
   autoReplay,
   onToggleAutoReplay,
   status,
@@ -238,7 +243,11 @@ function SpectatorShell({
         </div>
       </div>
 
-      <ThinkingPanel thinking={thinking} activeSeat={activeSeat} />
+      <ThinkingPanel
+        thinking={thinking}
+        activeSeat={activeSeat}
+        streamingThinking={streamingThinking}
+      />
     </div>
   );
 }
