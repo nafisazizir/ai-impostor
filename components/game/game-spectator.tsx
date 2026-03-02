@@ -132,7 +132,7 @@ function SpectatorShell({
     <div className="flex h-screen flex-col md:flex-row">
       {/* Left column: header + game area */}
       <div className="flex min-h-0 flex-1 flex-col">
-        <GameHeader />
+        <GameHeader state={state} />
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
           <SeatRing state={state} activeSeat={activeSeat} />
