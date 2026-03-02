@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GameState } from "@/lib/game/state";
 import type { GameOutcome, GamePhase } from "@/lib/game/types";
 
@@ -55,13 +55,32 @@ function PhaseLabel({ state }: { state: GameState }) {
   );
 }
 
-export function GameHeader({ state }: { state?: GameState }) {
-  const [elapsed, setElapsed] = useState(0);
+type Status = "idle" | "connecting" | "error" | "playing" | "finished";
 
+export function GameHeader({
+  state,
+  status,
+}: {
+  state?: GameState;
+  status: Status;
+}) {
+  const [elapsed, setElapsed] = useState(0);
+  const prevStatusRef = useRef<Status>(status);
+
+  // Reset timer when entering "connecting"
   useEffect(() => {
+    if (status === "connecting" && prevStatusRef.current !== "connecting") {
+      setElapsed(0);
+    }
+    prevStatusRef.current = status;
+  }, [status]);
+
+  // Run interval only while connecting or playing
+  useEffect(() => {
+    if (status !== "connecting" && status !== "playing") return;
     const interval = setInterval(() => setElapsed((s) => s + 1), 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [status]);
 
   const minutes = Math.floor(elapsed / 60);
   const seconds = elapsed % 60;
@@ -72,9 +91,11 @@ export function GameHeader({ state }: { state?: GameState }) {
     return (
       <header className="flex flex-col items-center justify-center p-4 tracking-tight">
         <h1 className="text-2xl text-balance">Impostor</h1>
-        <span className="text-muted-foreground mt-1 font-mono text-sm tabular-nums">
-          {display}
-        </span>
+        {status !== "idle" && (
+          <span className="text-muted-foreground mt-1 font-mono text-sm tabular-nums">
+            {display}
+          </span>
+        )}
       </header>
     );
   }

@@ -129,7 +129,7 @@ function SpectatorShell({
     <div className="flex h-screen flex-col md:flex-row">
       {/* Left column: header + game area */}
       <div className="flex min-h-0 flex-1 flex-col">
-        <GameHeader state={state} />
+        <GameHeader state={state} status={status} />
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
           {status === "idle" && (
