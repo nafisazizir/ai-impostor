@@ -132,6 +132,8 @@ function SpectatorShell({
   error,
   onAction,
 }: SpectatorShellProps) {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <div className="flex h-screen flex-col md:flex-row">
       {/* Left column: header + game area */}
@@ -192,6 +194,8 @@ function SpectatorShell({
         thinking={thinking}
         streamingThinking={streamingThinking}
         streamingAnswer={streamingAnswer}
+        collapsed={collapsed}
+        onToggle={() => setCollapsed((c) => !c)}
       />
     </div>
   );

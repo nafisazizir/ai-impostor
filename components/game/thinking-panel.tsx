@@ -1,6 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+} from "lucide-react";
 
 import type { GamePhase, ThinkingEntry } from "@/lib/game/types";
 import type {
@@ -46,10 +52,14 @@ export function ThinkingPanel({
   thinking,
   streamingThinking,
   streamingAnswer,
+  collapsed,
+  onToggle,
 }: {
   thinking: ThinkingEntry[];
   streamingThinking?: StreamingThinking | null;
   streamingAnswer?: StreamingAnswer | null;
+  collapsed: boolean;
+  onToggle: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrolledDown, setScrolledDown] = useState(false);
@@ -65,62 +75,92 @@ export function ThinkingPanel({
   }, [thinking.length, streamingThinking?.text, streamingAnswer?.text]);
 
   return (
-    <div
-      className={cn(
-        "flex shrink-0 flex-col",
-        "md:border-border md:w-80 md:border-l xl:w-96",
-        "border-border h-[25vh] border-t md:h-auto md:max-h-none md:border-t-0",
-      )}
-    >
-      <div className="relative min-h-0 flex-1">
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="scrollbar-hide h-full overflow-y-auto px-3 pt-3 pb-3"
-        >
-          <div className="flex flex-col gap-3">
-            <p className="text-muted-foreground/40 font-mono text-xs">
-              Game started
-            </p>
-            {thinking.map((entry, i) => {
-              const Logo = shouldShowHeader(thinking, i) ? playerLogo(entry.seat) : null;
-              return (
-                <div
-                  key={`${entry.seat}-${entry.phase}-${entry.round}-${i}`}
-                  className="transition-opacity duration-300"
-                >
-                  {Logo && (
-                    <div className="mb-1 flex items-center gap-1.5">
-                      <Logo className="text-muted-foreground size-3.5" />
-                      <span className="text-muted-foreground font-mono text-xs">
-                        {playerName(entry.seat)}
-                        <span className="text-muted-foreground/60 ml-2">
-                          {phaseLabel(entry)}
-                        </span>
-                      </span>
-                    </div>
-                  )}
-                  <p className="text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap">
-                    {entry.text}
-                  </p>
-                  {entry.actionSummary && (
-                    <p className="text-muted-foreground mt-0.5 font-mono text-xs">
-                      {entry.actionSummary}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
+    <div className="flex shrink-0 flex-col md:flex-row">
+      {/* Desktop toggle — vertical strip on left edge */}
+      <button
+        onClick={onToggle}
+        aria-label={collapsed ? "Expand thinking panel" : "Collapse thinking panel"}
+        className="border-border hidden cursor-pointer items-center border-l md:flex md:w-6"
+      >
+        {collapsed ? (
+          <ChevronLeftIcon className="text-muted-foreground mx-auto size-4" />
+        ) : (
+          <ChevronRightIcon className="text-muted-foreground mx-auto size-4" />
+        )}
+      </button>
 
-            {streamingThinking && <StreamingEntry thinking={streamingThinking} answer={streamingAnswer} />}
+      {/* Mobile toggle — horizontal bar on top edge */}
+      <button
+        onClick={onToggle}
+        aria-label={collapsed ? "Expand thinking panel" : "Collapse thinking panel"}
+        className="border-border flex h-6 cursor-pointer items-center justify-center border-t md:hidden"
+      >
+        {collapsed ? (
+          <ChevronUpIcon className="text-muted-foreground size-4" />
+        ) : (
+          <ChevronDownIcon className="text-muted-foreground size-4" />
+        )}
+      </button>
+
+      {/* Collapsible content */}
+      <div
+        className={cn(
+          "overflow-hidden transition-all duration-300 ease-in-out",
+          collapsed
+            ? "h-0 md:h-auto md:w-0"
+            : "h-[25vh] md:h-auto md:w-80 xl:w-96",
+        )}
+      >
+        <div className="relative flex h-full min-h-0 flex-col md:h-auto md:min-h-full">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="scrollbar-hide h-full overflow-y-auto px-3 pt-3 pb-3"
+          >
+            <div className="flex flex-col gap-3">
+              <p className="text-muted-foreground/40 font-mono text-xs">
+                Game started
+              </p>
+              {thinking.map((entry, i) => {
+                const Logo = shouldShowHeader(thinking, i) ? playerLogo(entry.seat) : null;
+                return (
+                  <div
+                    key={`${entry.seat}-${entry.phase}-${entry.round}-${i}`}
+                    className="transition-opacity duration-300"
+                  >
+                    {Logo && (
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <Logo className="text-muted-foreground size-3.5" />
+                        <span className="text-muted-foreground font-mono text-xs">
+                          {playerName(entry.seat)}
+                          <span className="text-muted-foreground/60 ml-2">
+                            {phaseLabel(entry)}
+                          </span>
+                        </span>
+                      </div>
+                    )}
+                    <p className="text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap">
+                      {entry.text}
+                    </p>
+                    {entry.actionSummary && (
+                      <p className="text-muted-foreground mt-0.5 font-mono text-xs">
+                        {entry.actionSummary}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+
+              {streamingThinking && <StreamingEntry thinking={streamingThinking} answer={streamingAnswer} />}
+            </div>
           </div>
+          <div
+            className={cn(
+              "pointer-events-none absolute top-0 right-0 left-0 z-10 h-8 bg-linear-to-b from-black to-transparent",
+              scrolledDown ? "opacity-100" : "opacity-0",
+            )}
+          />
         </div>
-        <div
-          className={cn(
-            "pointer-events-none absolute top-0 right-0 left-0 z-10 h-8 bg-linear-to-b from-black to-transparent",
-            scrolledDown ? "opacity-100" : "opacity-0",
-          )}
-        />
       </div>
     </div>
   );
