@@ -1,21 +1,11 @@
-import {
-  createGame,
-  pushSnapshot,
-  pushThinkingStart,
-  pushThinkingDelta,
-  pushThinkingEnd,
-  pushAnswerStart,
-  pushAnswerDelta,
-  pushAnswerEnd,
-  finishGame,
-  failGame,
-  addListener,
-  removeListener,
-  getGame,
-} from "@/lib/game/game-store";
-import { runGame } from "@/lib/ai/runner";
+import { getRun } from "workflow/api";
+
+import { getRunId, getGameStartIndex } from "@/lib/storage/redis";
+import type { GameStreamEvent } from "@/lib/workflows/types";
 
 export const maxDuration = 300;
+
+const HEARTBEAT_INTERVAL_MS = 15_000;
 
 function sseHeaders(): HeadersInit {
   return {
@@ -25,147 +15,115 @@ function sseHeaders(): HeadersInit {
   };
 }
 
-function sendEvent(
-  controller: ReadableStreamDefaultController,
-  event: string,
-  data: unknown,
-): void {
-  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-  controller.enqueue(new TextEncoder().encode(payload));
+function formatSSE(event: string, data: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
-const HEARTBEAT_INTERVAL_MS = 15_000;
-
-function startHeartbeat(
-  controller: ReadableStreamDefaultController,
-): ReturnType<typeof setInterval> {
-  return setInterval(() => {
-    try {
-      controller.enqueue(new TextEncoder().encode(":heartbeat\n\n"));
-    } catch {
-      // Controller already closed — cleared by caller
+function gameEventToSSE(event: GameStreamEvent): string {
+  switch (event.kind) {
+    case "game:start":
+      return formatSSE("gameId", { gameId: event.gameId });
+    case "snapshot":
+      return formatSSE("snapshot", event.snapshot);
+    case "thinking:start": {
+      const data: Record<string, unknown> = {
+        seat: event.seat,
+        phase: event.phase,
+        round: event.round,
+      };
+      if (event.pass !== undefined) data.pass = event.pass;
+      return formatSSE("thinking:start", data);
     }
-  }, HEARTBEAT_INTERVAL_MS);
+    case "thinking:delta":
+      return formatSSE("thinking:delta", { text: event.text });
+    case "thinking:end":
+      return formatSSE("thinking:end", { actionSummary: event.actionSummary });
+    case "answer:start":
+      return formatSSE("answer:start", {
+        seat: event.seat,
+        kind: event.actionKind,
+      });
+    case "answer:delta":
+      return formatSSE("answer:delta", { text: event.text });
+    case "answer:end":
+      return formatSSE("answer:end", {});
+    case "game:finished":
+      return formatSSE("finished", {});
+  }
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const action = searchParams.get("action");
-  const reconnectGameId = searchParams.get("gameId");
+  const encoder = new TextEncoder();
 
-  // --- Reconnect to existing game ---
-  if (reconnectGameId) {
-    const entry = getGame(reconnectGameId);
-    if (!entry) {
-      return new Response(JSON.stringify({ error: "Game not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
+  // Determine run ID and start index
+  let runId: string | null = searchParams.get("runId");
+  let startIndex: number;
+  const isReconnect = runId !== null && searchParams.has("startIndex");
+
+  if (isReconnect) {
+    startIndex = parseInt(searchParams.get("startIndex")!, 10) || 0;
+  } else {
+    // New viewer — read current game info from Redis
+    runId = await getRunId();
+    if (!runId) {
+      return Response.json(
+        { error: "No game running. POST /api/game/start to begin." },
+        { status: 503 },
+      );
     }
-
-    const stream = new ReadableStream({
-      start(controller) {
-        const heartbeat = startHeartbeat(controller);
-
-        // Replay all existing snapshots
-        sendEvent(controller, "gameId", { gameId: reconnectGameId });
-        for (const snapshot of entry.snapshots) {
-          sendEvent(controller, "snapshot", snapshot);
-        }
-
-        if (entry.status === "finished") {
-          clearInterval(heartbeat);
-          sendEvent(controller, "finished", {});
-          controller.close();
-          return;
-        }
-
-        if (entry.status === "error") {
-          clearInterval(heartbeat);
-          sendEvent(controller, "error", { message: entry.error ?? "Unknown error" });
-          controller.close();
-          return;
-        }
-
-        // Still running — attach as live listener
-        const listener = addListener(reconnectGameId, controller);
-        if (!listener) {
-          clearInterval(heartbeat);
-          controller.close();
-          return;
-        }
-
-        request.signal.addEventListener("abort", () => {
-          clearInterval(heartbeat);
-          removeListener(reconnectGameId, listener);
-          try {
-            controller.close();
-          } catch {
-            // already closed
-          }
-        });
-      },
-    });
-
-    return new Response(stream, { headers: sseHeaders() });
+    startIndex = await getGameStartIndex();
   }
 
-  // --- Start new game ---
-  if (action !== "new") {
-    return new Response(
-      JSON.stringify({ error: "Provide ?action=new or ?gameId=xxx" }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
-    );
-  }
-
-  const gameId = `game-${Date.now()}`;
-  createGame(gameId);
+  // Get the WDK readable stream (runId guaranteed non-null at this point)
+  const run = getRun(runId!);
+  const wdkReadable = run.getReadable<GameStreamEvent>({ startIndex });
+  const reader = wdkReadable.getReader();
 
   const stream = new ReadableStream({
     start(controller) {
-      const heartbeat = startHeartbeat(controller);
-
-      sendEvent(controller, "gameId", { gameId });
-
-      const listener = addListener(gameId, controller);
-      if (!listener) {
-        clearInterval(heartbeat);
-        controller.close();
-        return;
+      // Send connection metadata (runId + startIndex for reconnection)
+      if (!isReconnect) {
+        controller.enqueue(
+          encoder.encode(formatSSE("meta", { runId, startIndex })),
+        );
       }
 
-      request.signal.addEventListener("abort", () => {
+      // Heartbeat
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(":heartbeat\n\n"));
+        } catch {
+          clearInterval(heartbeat);
+        }
+      }, HEARTBEAT_INTERVAL_MS);
+
+      const cleanup = () => {
         clearInterval(heartbeat);
-        removeListener(gameId, listener);
+        reader.cancel().catch(() => {});
         try {
           controller.close();
         } catch {
           // already closed
         }
-      });
+      };
 
-      // Fire-and-forget: run the game
-      runGame(gameId, {
-        onSnapshot: (snapshot) => pushSnapshot(gameId, snapshot),
-        onThinkingStart: (data) => pushThinkingStart(gameId, data),
-        onThinkingDelta: (text) => pushThinkingDelta(gameId, text),
-        onThinkingEnd: (summary) => pushThinkingEnd(gameId, summary),
-        onAnswerStart: (data) => pushAnswerStart(gameId, data),
-        onAnswerDelta: (text) => pushAnswerDelta(gameId, text),
-        onAnswerEnd: () => pushAnswerEnd(gameId),
-      })
-        .then(() => {
-          clearInterval(heartbeat);
-          finishGame(gameId);
-        })
-        .catch((error) => {
-          clearInterval(heartbeat);
-          console.error(`[${gameId}] Game failed:`, error);
-          failGame(
-            gameId,
-            error instanceof Error ? error.message : String(error),
-          );
-        });
+      request.signal.addEventListener("abort", cleanup);
+
+      // Pump WDK events → SSE
+      (async () => {
+        try {
+          while (!request.signal.aborted) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(encoder.encode(gameEventToSSE(value)));
+          }
+        } catch {
+          // Reader cancelled or stream error
+        } finally {
+          cleanup();
+        }
+      })();
     },
   });
 
