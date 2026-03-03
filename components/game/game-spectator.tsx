@@ -6,7 +6,10 @@ import type { MockSnapshot } from "@/lib/game/mock-states";
 import type { GameSnapshot } from "@/lib/game/snapshot";
 import type { GameState } from "@/lib/game/state";
 import type { SeatNumber, ThinkingEntry } from "@/lib/game/types";
-import type { StreamingThinking, StreamingAnswer } from "@/hooks/use-game-stream";
+import type {
+  StreamingThinking,
+  StreamingAnswer,
+} from "@/hooks/use-game-stream";
 import { deriveActiveSeat } from "@/lib/game/ui-helpers";
 import { useGameStream } from "@/hooks/use-game-stream";
 
@@ -134,7 +137,7 @@ function SpectatorShell({
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
           {status === "idle" && (
             <>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground font-mono text-sm">
                 6 AI models. 1 secret word. Who&apos;s the impostor?
               </p>
               <Button
@@ -148,7 +151,7 @@ function SpectatorShell({
           )}
 
           {status === "connecting" && (
-            <p className="text-muted-foreground animate-pulse text-sm">
+            <p className="text-muted-foreground animate-pulse font-mono text-sm">
               Generating word pair and assigning roles...
             </p>
           )}
