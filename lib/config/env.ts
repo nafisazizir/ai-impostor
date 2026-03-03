@@ -11,10 +11,12 @@ export type AppEnv = {
   WORKFLOW_START_SECRET: string;
   WORKFLOW_LOOP_ID: string;
   WORKFLOW_MAX_DISCUSSION_PASSES: number;
+  WORKFLOW_GAME_DELAY_MS: number;
 };
 
 const DEFAULT_WORKFLOW_LOOP_ID = "ai-impostor-main-loop";
 const DEFAULT_MAX_DISCUSSION_PASSES = 1;
+const DEFAULT_GAME_DELAY_MS = 0;
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) {
@@ -25,6 +27,21 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(
       `Invalid WORKFLOW_MAX_DISCUSSION_PASSES value "${value}". Expected a positive integer.`,
+    );
+  }
+
+  return parsed;
+}
+
+function parseNonNegativeInt(value: string | undefined, fallback: number): number {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(
+      `Invalid WORKFLOW_GAME_DELAY_MS value "${value}". Expected a non-negative integer.`,
     );
   }
 
@@ -62,6 +79,10 @@ export function getEnv(): AppEnv {
     WORKFLOW_MAX_DISCUSSION_PASSES: parsePositiveInt(
       process.env.WORKFLOW_MAX_DISCUSSION_PASSES,
       DEFAULT_MAX_DISCUSSION_PASSES,
+    ),
+    WORKFLOW_GAME_DELAY_MS: parseNonNegativeInt(
+      process.env.WORKFLOW_GAME_DELAY_MS,
+      DEFAULT_GAME_DELAY_MS,
     ),
   };
 }
