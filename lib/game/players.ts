@@ -13,6 +13,7 @@ import {
   MistralIcon,
   DeepSeekIcon,
   AnthropicIcon,
+  AlibabaIcon,
   XAIIcon,
 } from "@/components/icons/player-icons";
 
@@ -43,10 +44,10 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
     providerOptions: {},
   },
   2: {
-    provider: "anthropic",
-    model: "claude-3-haiku",
-    logo: AnthropicIcon,
-    gatewayId: "anthropic/claude-3-haiku",
+    provider: "openai",
+    model: "gpt-4.1-mini",
+    logo: OpenAIIcon,
+    gatewayId: "openai/gpt-4.1-mini",
     providerOptions: {},
   },
   3: {

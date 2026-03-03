@@ -84,8 +84,9 @@ function extractJsonFromText(text: string): unknown | null {
 }
 
 /**
- * Try `result.output` first. On failure, fall back to parsing raw text
- * with `<think>` tag stripping and schema validation.
+ * Resolve structured output from a streamText result.
+ * No silent fallbacks — fails with rich diagnostics so we can see exactly
+ * what the model returned when structured output doesn't work.
  */
 async function resolveOutput<T>(
   result: ReturnType<typeof streamText>,
@@ -97,8 +98,9 @@ async function resolveOutput<T>(
   try {
     const raw = await result.output;
     if (raw !== undefined) output = raw as T;
-  } catch {
-    // Structured output parsing failed — try text fallback
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn(`[${label}] Structured output failed: ${msg}`);
   }
 
   const reasoningText = (await result.reasoningText) ?? "";
@@ -107,20 +109,23 @@ async function resolveOutput<T>(
     return { output, reasoningText };
   }
 
-  // Fallback: extract JSON from raw text (handles <think> tags)
+  // Diagnostics: inspect raw text to understand what the model actually returned
   const text = await result.text;
   const parsed = extractJsonFromText(text);
-  if (parsed !== null) {
+  if (parsed !== null && typeof parsed === "object") {
     const validated = schema.safeParse(parsed);
-    if (validated.success) {
+    if (!validated.success) {
       console.warn(
-        `[${label}] Used text fallback — structured output failed but JSON extracted from raw text`,
+        `[${label}] Raw text contained JSON but schema validation failed:\n  parsed=${JSON.stringify(parsed)}, error="${validated.error.message}"`,
       );
-      return { output: validated.data, reasoningText };
     }
   }
 
-  throw new Error(`[${label}] No output generated and text fallback failed`);
+  const truncated = text.slice(0, 200);
+  const finishReason = await result.finishReason;
+  throw new Error(
+    `[${label}] No output generated. finishReason=${finishReason}, raw text (${text.length} chars): "${truncated}"`,
+  );
 }
 
 export async function streamWordPair(
