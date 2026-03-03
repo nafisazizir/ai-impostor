@@ -23,7 +23,8 @@ import {
   streamMrWhiteGuess,
 } from "@/lib/ai/actions";
 import type { ActionResult } from "@/lib/ai/actions";
-import { setGameStartIndex } from "@/lib/storage/redis";
+import { setGameStartIndex, persistGame } from "@/lib/storage/redis";
+import { buildPersistedGame } from "@/lib/game/persisted";
 import type { GameStreamEvent } from "@/lib/workflows/types";
 
 const MAX_ROUNDS = 10;
@@ -534,6 +535,16 @@ async function emitFinishedStep(): Promise<{ eventsWritten: number }> {
   return { eventsWritten };
 }
 
+async function persistGameStep(
+  state: GameState,
+  thinking: ThinkingEntry[],
+): Promise<void> {
+  "use step";
+  const game = buildPersistedGame(state, thinking);
+  await persistGame(game);
+  console.log(`[${state.gameId}] Persisted to Redis (${game.summary.durationMs}ms game)`);
+}
+
 // ─── Main workflow ───────────────────────────────────────────────────────────
 
 export async function gameLoopWorkflow() {
@@ -626,6 +637,10 @@ export async function gameLoopWorkflow() {
 
     const over = await emitGameOverSnapshotStep(state, thinking, snapshotIndex);
     streamOffset += over.eventsWritten;
+
+    if (state.outcome) {
+      await persistGameStep(state, thinking);
+    }
 
     const fin = await emitFinishedStep();
     streamOffset += fin.eventsWritten;
