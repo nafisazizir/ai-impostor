@@ -58,7 +58,7 @@ function MockSpectator({ snapshots }: { snapshots: MockSnapshot[] }) {
       activeSeat={activeSeat}
       thinking={thinking}
       status={isFinished ? "finished" : "playing"}
-      onStart={restart}
+      onAction={restart}
     />
   );
 }
@@ -73,7 +73,7 @@ function LiveSpectator() {
     error,
     streamingThinking,
     streamingAnswer,
-    startGame,
+    reconnect,
   } = useGameStream();
 
   const snapshot: GameSnapshot | undefined = snapshots[currentIndex];
@@ -92,7 +92,7 @@ function LiveSpectator() {
       streamingAnswer={streamingAnswer}
       status={shellStatus}
       error={error}
-      onStart={startGame}
+      onAction={reconnect}
     />
   );
 }
@@ -103,10 +103,9 @@ function deriveShellStatus(
   status: GameStreamStatus,
   hasSnapshot: boolean,
 ): SpectatorShellProps["status"] {
-  if (status === "finished") return "finished";
+  if (status === "between-games") return "between-games";
   if (hasSnapshot) return "playing";
   if (status === "error") return "error";
-  if (status === "idle") return "idle";
   return "connecting";
 }
 
@@ -118,9 +117,9 @@ type SpectatorShellProps = {
   thinking: ThinkingEntry[];
   streamingThinking?: StreamingThinking | null;
   streamingAnswer?: StreamingAnswer | null;
-  status: "idle" | "connecting" | "error" | "playing" | "finished";
+  status: "connecting" | "error" | "playing" | "finished" | "between-games";
   error?: string | null;
-  onStart: () => void;
+  onAction: () => void;
 };
 
 function SpectatorShell({
@@ -131,7 +130,7 @@ function SpectatorShell({
   streamingAnswer,
   status,
   error,
-  onStart,
+  onAction,
 }: SpectatorShellProps) {
   return (
     <div className="flex h-screen flex-col md:flex-row">
@@ -140,24 +139,9 @@ function SpectatorShell({
         <GameHeader state={state} status={status} />
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
-          {status === "idle" && (
-            <>
-              <p className="text-muted-foreground font-mono text-sm">
-                6 AI models. 1 secret word. Who&apos;s the impostor?
-              </p>
-              <Button
-                onClick={onStart}
-                className="hover:bg-primary/80 cursor-pointer"
-                size="lg"
-              >
-                Start Game
-              </Button>
-            </>
-          )}
-
-          {status === "connecting" && (
+          {status === "connecting" && !state && (
             <p className="text-muted-foreground animate-pulse font-mono text-sm">
-              Generating word pair and assigning roles...
+              Connecting to live game...
             </p>
           )}
 
@@ -167,12 +151,21 @@ function SpectatorShell({
                 {error ?? "Something went wrong"}
               </p>
               <Button
-                onClick={onStart}
+                onClick={onAction}
                 className="hover:bg-primary/80 cursor-pointer"
                 size="lg"
               >
                 Try Again
               </Button>
+            </>
+          )}
+
+          {status === "between-games" && (
+            <>
+              {state && <SeatRing state={state} activeSeat={null} />}
+              <p className="text-muted-foreground animate-pulse font-mono text-sm">
+                Next game starting...
+              </p>
             </>
           )}
 
@@ -184,7 +177,7 @@ function SpectatorShell({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={onStart}
+                  onClick={onAction}
                   className="text-muted-foreground cursor-pointer text-xs"
                 >
                   Watch New Game

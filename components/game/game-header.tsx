@@ -55,7 +55,7 @@ function PhaseLabel({ state }: { state: GameState }) {
   );
 }
 
-type Status = "idle" | "connecting" | "error" | "playing" | "finished";
+type Status = "idle" | "connecting" | "error" | "playing" | "finished" | "between-games";
 
 export function GameHeader({
   state,
