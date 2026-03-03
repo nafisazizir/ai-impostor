@@ -57,9 +57,6 @@ export function SeatCard({
             {voteCount}
           </Badge>
         )}
-        {lastAction?.hasActed && (
-          <span className="bg-muted-foreground/30 absolute -top-0.5 -right-0.5 size-1 rounded-full" />
-        )}
       </div>
 
       <span
