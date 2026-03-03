@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { ThinkingEntry } from "@/lib/game/types";
+import type { GamePhase, ThinkingEntry } from "@/lib/game/types";
 import type {
   StreamingThinking,
   StreamingAnswer,
@@ -22,21 +22,8 @@ const ANSWER_PREFIX: Record<string, string> = {
   discussion: 'Said: "',
   mr_white_guess: 'Guessed: "',
 };
-const ANSWER_SUFFIX: Record<string, string> = {
-  clue: '"',
-  discussion: '"',
-  mr_white_guess: '"',
-};
 
-function entryLabel(entry: ThinkingEntry): string {
-  const phase = PHASE_LABEL[entry.phase] ?? entry.phase;
-  if (entry.pass !== undefined) {
-    return `R${entry.round} ${phase} P${entry.pass}`;
-  }
-  return `R${entry.round} ${phase}`;
-}
-
-function streamingEntryLabel(entry: StreamingThinking): string {
+function phaseLabel(entry: { phase: GamePhase; round: number; pass?: number }): string {
   const phase = PHASE_LABEL[entry.phase] ?? entry.phase;
   if (entry.pass !== undefined) {
     return `R${entry.round} ${phase} P${entry.pass}`;
@@ -81,13 +68,10 @@ export function ThinkingPanel({
     <div
       className={cn(
         "flex shrink-0 flex-col",
-        // Desktop: right panel
         "md:border-border md:w-80 md:border-l xl:w-96",
-        // Mobile: bottom panel
         "border-border h-[25vh] border-t md:h-auto md:max-h-none md:border-t-0",
       )}
     >
-      {/* Content */}
       <div className="relative min-h-0 flex-1">
         <div
           ref={scrollRef}
@@ -99,27 +83,23 @@ export function ThinkingPanel({
               Game started
             </p>
             {thinking.map((entry, i) => {
+              const Logo = shouldShowHeader(thinking, i) ? playerLogo(entry.seat) : null;
               return (
                 <div
                   key={`${entry.seat}-${entry.phase}-${entry.round}-${i}`}
                   className="transition-opacity duration-300"
                 >
-                  {/* Entry header — show when speaker, phase, or pass changes */}
-                  {shouldShowHeader(thinking, i) &&
-                    (() => {
-                      const Logo = playerLogo(entry.seat);
-                      return (
-                        <div className="mb-1 flex items-center gap-1.5">
-                          <Logo className="text-muted-foreground size-3.5" />
-                          <span className="text-muted-foreground font-mono text-xs">
-                            {playerName(entry.seat)}
-                            <span className="text-muted-foreground/60 ml-2">
-                              {entryLabel(entry)}
-                            </span>
-                          </span>
-                        </div>
-                      );
-                    })()}
+                  {Logo && (
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Logo className="text-muted-foreground size-3.5" />
+                      <span className="text-muted-foreground font-mono text-xs">
+                        {playerName(entry.seat)}
+                        <span className="text-muted-foreground/60 ml-2">
+                          {phaseLabel(entry)}
+                        </span>
+                      </span>
+                    </div>
+                  )}
                   <p className="text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap">
                     {entry.text}
                   </p>
@@ -132,59 +112,9 @@ export function ThinkingPanel({
               );
             })}
 
-            {/* Live streaming thinking entry */}
-            {streamingThinking &&
-              (() => {
-                const Logo = playerLogo(streamingThinking.seat);
-                return (
-                  <div className="transition-opacity duration-300">
-                    <div className="mb-1 flex items-center gap-1.5">
-                      <Logo className="text-muted-foreground size-3.5" />
-                      <span className="font-mono text-xs">
-                        <span
-                          className={cn(
-                            streamingThinking.isStreaming
-                              ? "animate-thinking"
-                              : "text-muted-foreground",
-                          )}
-                        >
-                          {playerName(streamingThinking.seat)}
-                        </span>
-                        <span className="text-muted-foreground/60 ml-2">
-                          {streamingEntryLabel(streamingThinking)}
-                        </span>
-                      </span>
-                    </div>
-                    <p
-                      className={cn(
-                        "text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap",
-                        streamingThinking.isStreaming,
-                      )}
-                    >
-                      {streamingThinking.text}
-                    </p>
-                    {/* Streaming answer with inline prefix — matches actionSummary format */}
-                    {streamingAnswer?.text ? (
-                      <p className="text-muted-foreground mt-0.5 font-mono text-xs leading-tight whitespace-pre-wrap">
-                        {ANSWER_PREFIX[streamingAnswer.kind]}
-                        {streamingAnswer.text}
-                        {!streamingAnswer.isStreaming &&
-                          ANSWER_SUFFIX[streamingAnswer.kind]}
-                      </p>
-                    ) : (
-                      /* Vote / phases with no streaming answer — show actionSummary directly */
-                      streamingThinking.actionSummary && (
-                        <p className="text-muted-foreground mt-0.5 font-mono text-xs">
-                          {streamingThinking.actionSummary}
-                        </p>
-                      )
-                    )}
-                  </div>
-                );
-              })()}
+            {streamingThinking && <StreamingEntry thinking={streamingThinking} answer={streamingAnswer} />}
           </div>
         </div>
-        {/* Top-fade gradient overlay — hidden when scrolled to top */}
         <div
           className={cn(
             "pointer-events-none absolute top-0 right-0 left-0 z-10 h-8 bg-linear-to-b from-black to-transparent",
@@ -192,6 +122,59 @@ export function ThinkingPanel({
           )}
         />
       </div>
+    </div>
+  );
+}
+
+function StreamingEntry({
+  thinking,
+  answer,
+}: {
+  thinking: StreamingThinking;
+  answer?: StreamingAnswer | null;
+}) {
+  const Logo = playerLogo(thinking.seat);
+
+  return (
+    <div className="transition-opacity duration-300">
+      <div className="mb-1 flex items-center gap-1.5">
+        <Logo className="text-muted-foreground size-3.5" />
+        <span className="font-mono text-xs">
+          <span
+            className={cn(
+              thinking.isStreaming
+                ? "animate-thinking"
+                : "text-muted-foreground",
+            )}
+          >
+            {playerName(thinking.seat)}
+          </span>
+          <span className="text-muted-foreground/60 ml-2">
+            {phaseLabel(thinking)}
+          </span>
+        </span>
+      </div>
+      <p
+        className={cn(
+          "text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap",
+          thinking.isStreaming,
+        )}
+      >
+        {thinking.text}
+      </p>
+      {answer?.text ? (
+        <p className="text-muted-foreground mt-0.5 font-mono text-xs leading-tight whitespace-pre-wrap">
+          {ANSWER_PREFIX[answer.kind]}
+          {answer.text}
+          {!answer.isStreaming && '"'}
+        </p>
+      ) : (
+        thinking.actionSummary && (
+          <p className="text-muted-foreground mt-0.5 font-mono text-xs">
+            {thinking.actionSummary}
+          </p>
+        )
+      )}
     </div>
   );
 }

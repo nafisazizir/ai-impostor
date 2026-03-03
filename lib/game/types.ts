@@ -6,23 +6,10 @@ export const ROLE_COUNTS = {
   mr_white: 1,
 } as const;
 
-export const GAME_PHASES = [
-  "setup",
-  "clue",
-  "discussion",
-  "vote",
-  "elimination",
-  "finished",
-] as const;
-
-export const WINNERS = ["civilians", "impostor", "mr_white"] as const;
-
 export type Role = keyof typeof ROLE_COUNTS;
 export type SeatNumber = 1 | 2 | 3 | 4 | 5 | 6;
-export type GamePhase = (typeof GAME_PHASES)[number];
-export type Winner = (typeof WINNERS)[number];
+export type GamePhase = "setup" | "clue" | "discussion" | "vote" | "elimination" | "finished";
 
-export type SeatsByRole = Record<Role, SeatNumber[]>;
 export type RolesBySeat = Record<SeatNumber, Role>;
 
 export type WordPair = {
@@ -58,11 +45,6 @@ export type EliminationResult =
       reason: "plurality";
     };
 
-export type MrWhiteGuessResult = {
-  guess: string;
-  wasCorrect: boolean;
-};
-
 export type GameOutcome =
   | {
       winner: "civilians";
@@ -90,15 +72,3 @@ export type ThinkingEntry = {
   text: string;
   actionSummary: string;
 };
-
-export function isSeatNumber(value: number): value is SeatNumber {
-  return Number.isInteger(value) && value >= 1 && value <= PLAYER_COUNT;
-}
-
-export function toSeatNumber(value: number): SeatNumber {
-  if (!isSeatNumber(value)) {
-    throw new Error(`Invalid seat number: ${value}. Expected an integer from 1 to 6.`);
-  }
-
-  return value;
-}

@@ -2,7 +2,7 @@ import { appendGameEvent, type GameState } from "@/lib/game/state";
 import { ROLE_COUNTS, type Role, type RolesBySeat } from "@/lib/game/types";
 
 import { ALL_SEATS, INITIAL_ROUND, type EngineOptions } from "@/lib/game/engine/types";
-import { assignRoles, shuffleInPlace, timestamp } from "@/lib/game/engine/utils";
+import { assignRoles, shuffleInPlace } from "@/lib/game/engine/utils";
 
 export function createInitialGameState(options: EngineOptions): GameState {
   const now = options.now ?? (() => new Date().toISOString());
@@ -14,7 +14,7 @@ export function createInitialGameState(options: EngineOptions): GameState {
     "mr_white",
   ];
   const rolesBySeat = assignRoles(seatOrder, rolePool, rng);
-  const at = timestamp(now);
+  const at = now();
 
   const initialState: GameState = {
     gameId: options.gameId,

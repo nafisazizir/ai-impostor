@@ -10,12 +10,11 @@ import {
 } from "@/lib/game/engine/types";
 import {
   assertActorTurn,
-  cloneCluesByRound,
-  cloneDiscussionByRound,
-  cloneVotesByRound,
+  cloneRoundMap,
   orderedAliveSeats,
-  timestamp,
 } from "@/lib/game/engine/utils";
+
+const defaultNow: TimestampFactory = () => new Date().toISOString();
 
 export function submitClue(state: GameState, input: ClueSubmission, now?: TimestampFactory): GameState {
   assertPhase(state, ["clue"]);
@@ -36,7 +35,7 @@ export function submitClue(state: GameState, input: ClueSubmission, now?: Timest
   const nextState: GameState = {
     ...state,
     cluesByRound: {
-      ...cloneCluesByRound(state.cluesByRound),
+      ...cloneRoundMap(state.cluesByRound),
       [state.currentRound]: [...roundClues, clue],
     },
   };
@@ -51,7 +50,7 @@ export function submitClue(state: GameState, input: ClueSubmission, now?: Timest
     type: "clue_submitted",
     gameId: state.gameId,
     round: state.currentRound,
-    at: timestamp(now ?? (() => new Date().toISOString())),
+    at: (now ?? defaultNow)(),
     clue,
   });
 }
@@ -86,7 +85,7 @@ export function submitDiscussionMessage(
   const nextState: GameState = {
     ...state,
     discussionByRound: {
-      ...cloneDiscussionByRound(state.discussionByRound),
+      ...cloneRoundMap(state.discussionByRound),
       [state.currentRound]: [...roundMessages, message],
     },
   };
@@ -105,7 +104,7 @@ export function submitDiscussionMessage(
     type: "discussion_message",
     gameId: state.gameId,
     round: state.currentRound,
-    at: timestamp(now ?? (() => new Date().toISOString())),
+    at: (now ?? defaultNow)(),
     message,
   });
 }
@@ -130,7 +129,7 @@ export function submitVote(state: GameState, input: VoteSubmission, now?: Timest
   const nextState: GameState = {
     ...state,
     votesByRound: {
-      ...cloneVotesByRound(state.votesByRound),
+      ...cloneRoundMap(state.votesByRound),
       [state.currentRound]: [...roundVotes, vote],
     },
   };
@@ -144,7 +143,7 @@ export function submitVote(state: GameState, input: VoteSubmission, now?: Timest
     type: "vote_cast",
     gameId: state.gameId,
     round: state.currentRound,
-    at: timestamp(now ?? (() => new Date().toISOString())),
+    at: (now ?? defaultNow)(),
     vote,
   });
 }

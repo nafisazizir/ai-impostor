@@ -9,7 +9,9 @@ import {
 
 import type { TimestampFactory } from "@/lib/game/engine/types";
 import { ALL_SEATS } from "@/lib/game/engine/types";
-import { orderedAliveSeats, timestamp } from "@/lib/game/engine/utils";
+import { orderedAliveSeats } from "@/lib/game/engine/utils";
+
+const defaultNow: TimestampFactory = () => new Date().toISOString();
 
 export function resolveRound(state: GameState, now?: TimestampFactory): {
   state: GameState;
@@ -63,7 +65,7 @@ export function resolveRound(state: GameState, now?: TimestampFactory): {
     type: "round_resolved",
     gameId: state.gameId,
     round: state.currentRound,
-    at: timestamp(now ?? (() => new Date().toISOString())),
+    at: (now ?? defaultNow)(),
     tally,
     elimination: result,
   });
@@ -135,7 +137,7 @@ function applyOutcomeOrAdvance(
       type: "game_finished",
       gameId: state.gameId,
       round: state.currentRound,
-      at: timestamp(now ?? (() => new Date().toISOString())),
+      at: (now ?? defaultNow)(),
       outcome,
     });
   }
@@ -178,7 +180,7 @@ export function applyElimination(
     type: "player_eliminated",
     gameId: state.gameId,
     round: state.currentRound,
-    at: timestamp(now ?? (() => new Date().toISOString())),
+    at: (now ?? defaultNow)(),
     eliminatedSeat: result.eliminatedSeat,
     revealedRole,
   });
@@ -215,7 +217,7 @@ export function resolveMrWhiteGuess(
     type: "mr_white_guess_made",
     gameId: state.gameId,
     round: state.currentRound,
-    at: timestamp(now ?? (() => new Date().toISOString())),
+    at: (now ?? defaultNow)(),
     seat: mrWhiteSeat,
     guess,
     wasCorrect,

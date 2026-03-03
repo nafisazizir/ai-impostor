@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { JSONValue } from "ai";
 import type { SeatNumber } from "@/lib/game/types";
 import type { IconProps } from "@/components/icons/player-icons";
 import {
@@ -9,18 +10,12 @@ import {
   XAIIcon,
 } from "@/components/icons/player-icons";
 
-type JSONValue = null | string | number | boolean | JSONObject | JSONArray;
-type JSONObject = {
-  [key: string]: JSONValue | undefined;
-};
-type JSONArray = JSONValue[];
-
 type PlayerConfig = {
   provider: string;
   model: string;
   logo: ComponentType<IconProps>;
   gatewayId: string;
-  providerOptions: Record<string, JSONObject>;
+  providerOptions: Record<string, Record<string, JSONValue | undefined>>;
 };
 
 /**

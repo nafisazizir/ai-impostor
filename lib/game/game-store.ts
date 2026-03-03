@@ -29,6 +29,14 @@ function sendEvent(
   }
 }
 
+function broadcast(gameId: string, event: string, data: unknown): void {
+  const entry = games.get(gameId);
+  if (!entry) return;
+  for (const listener of entry.listeners) {
+    sendEvent(listener.controller, event, data);
+  }
+}
+
 export function createGame(gameId: string): void {
   games.set(gameId, {
     snapshots: [],
@@ -41,66 +49,37 @@ export function pushSnapshot(gameId: string, snapshot: GameSnapshot): void {
   const entry = games.get(gameId);
   if (!entry) return;
   entry.snapshots.push(snapshot);
-  for (const listener of entry.listeners) {
-    sendEvent(listener.controller, "snapshot", snapshot);
-  }
+  broadcast(gameId, "snapshot", snapshot);
 }
 
 export function pushThinkingStart(
   gameId: string,
   data: { seat: SeatNumber; phase: GamePhase; round: number; pass?: number },
 ): void {
-  const entry = games.get(gameId);
-  if (!entry) return;
-  for (const listener of entry.listeners) {
-    sendEvent(listener.controller, "thinking:start", data);
-  }
+  broadcast(gameId, "thinking:start", data);
 }
 
 export function pushThinkingDelta(gameId: string, text: string): void {
-  const entry = games.get(gameId);
-  if (!entry) return;
-  for (const listener of entry.listeners) {
-    sendEvent(listener.controller, "thinking:delta", { text });
-  }
+  broadcast(gameId, "thinking:delta", { text });
 }
 
-export function pushThinkingEnd(
-  gameId: string,
-  actionSummary: string,
-): void {
-  const entry = games.get(gameId);
-  if (!entry) return;
-  for (const listener of entry.listeners) {
-    sendEvent(listener.controller, "thinking:end", { actionSummary });
-  }
+export function pushThinkingEnd(gameId: string, actionSummary: string): void {
+  broadcast(gameId, "thinking:end", { actionSummary });
 }
 
 export function pushAnswerStart(
   gameId: string,
   data: { seat: SeatNumber; kind: string },
 ): void {
-  const entry = games.get(gameId);
-  if (!entry) return;
-  for (const listener of entry.listeners) {
-    sendEvent(listener.controller, "answer:start", data);
-  }
+  broadcast(gameId, "answer:start", data);
 }
 
 export function pushAnswerDelta(gameId: string, text: string): void {
-  const entry = games.get(gameId);
-  if (!entry) return;
-  for (const listener of entry.listeners) {
-    sendEvent(listener.controller, "answer:delta", { text });
-  }
+  broadcast(gameId, "answer:delta", { text });
 }
 
 export function pushAnswerEnd(gameId: string): void {
-  const entry = games.get(gameId);
-  if (!entry) return;
-  for (const listener of entry.listeners) {
-    sendEvent(listener.controller, "answer:end", {});
-  }
+  broadcast(gameId, "answer:end", {});
 }
 
 export function finishGame(gameId: string): void {

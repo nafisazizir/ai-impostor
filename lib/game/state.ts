@@ -126,9 +126,3 @@ export function assertSeatAlive(state: GameState, seat: SeatNumber): void {
   }
 }
 
-export function hasEventType<TType extends GameEvent["type"]>(
-  state: GameState,
-  type: TType,
-): boolean {
-  return state.events.some((event) => event.type === type);
-}

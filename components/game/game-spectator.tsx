@@ -7,6 +7,7 @@ import type { GameSnapshot } from "@/lib/game/snapshot";
 import type { GameState } from "@/lib/game/state";
 import type { SeatNumber, ThinkingEntry } from "@/lib/game/types";
 import type {
+  GameStreamStatus,
   StreamingThinking,
   StreamingAnswer,
 } from "@/hooks/use-game-stream";
@@ -80,16 +81,7 @@ function LiveSpectator() {
   const thinking = snapshot?.thinking ?? [];
   const activeSeat = state ? deriveActiveSeat(state) : null;
 
-  const shellStatus: SpectatorShellProps["status"] =
-    status === "finished"
-      ? "finished"
-      : snapshot
-        ? "playing"
-        : status === "error"
-          ? "error"
-          : status === "idle"
-            ? "idle"
-            : "connecting";
+  const shellStatus = deriveShellStatus(status, !!snapshot);
 
   return (
     <SpectatorShell
@@ -103,6 +95,19 @@ function LiveSpectator() {
       onStart={startGame}
     />
   );
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function deriveShellStatus(
+  status: GameStreamStatus,
+  hasSnapshot: boolean,
+): SpectatorShellProps["status"] {
+  if (status === "finished") return "finished";
+  if (hasSnapshot) return "playing";
+  if (status === "error") return "error";
+  if (status === "idle") return "idle";
+  return "connecting";
 }
 
 // ─── Shared shell ─────────────────────────────────────────────────────────────

@@ -97,6 +97,10 @@ export function hostWordPairUserPrompt(): string {
 // Context builder
 // ---------------------------------------------------------------------------
 
+function sortedRoundKeys(map: Record<number, unknown[]>): number[] {
+  return Object.keys(map).map(Number).sort((a, b) => a - b);
+}
+
 export function gameContextSummary(state: GameState, player: SeatNumber): string {
   const lines: string[] = [];
   const alive = orderedAliveSeats(state);
@@ -124,10 +128,7 @@ export function gameContextSummary(state: GameState, player: SeatNumber): string
   }
 
   // History: clues from all rounds
-  const roundKeys = Object.keys(state.cluesByRound)
-    .map(Number)
-    .sort((a, b) => a - b);
-  for (const round of roundKeys) {
+  for (const round of sortedRoundKeys(state.cluesByRound)) {
     const clues = state.cluesByRound[round];
     if (clues && clues.length > 0) {
       lines.push("");
@@ -139,10 +140,7 @@ export function gameContextSummary(state: GameState, player: SeatNumber): string
   }
 
   // History: discussion from all rounds
-  const discRoundKeys = Object.keys(state.discussionByRound)
-    .map(Number)
-    .sort((a, b) => a - b);
-  for (const round of discRoundKeys) {
+  for (const round of sortedRoundKeys(state.discussionByRound)) {
     const messages = state.discussionByRound[round];
     if (messages && messages.length > 0) {
       lines.push("");
@@ -154,10 +152,7 @@ export function gameContextSummary(state: GameState, player: SeatNumber): string
   }
 
   // History: votes from all rounds
-  const voteRoundKeys = Object.keys(state.votesByRound)
-    .map(Number)
-    .sort((a, b) => a - b);
-  for (const round of voteRoundKeys) {
+  for (const round of sortedRoundKeys(state.votesByRound)) {
     const votes = state.votesByRound[round];
     if (votes && votes.length > 0) {
       lines.push("");

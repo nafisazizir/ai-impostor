@@ -1,11 +1,7 @@
 import type { GameState } from "@/lib/game/state";
 import type { RolesBySeat, SeatNumber } from "@/lib/game/types";
 
-import type { Rng, TimestampFactory } from "@/lib/game/engine/types";
-
-export function timestamp(now: TimestampFactory): string {
-  return now();
-}
+import type { Rng } from "@/lib/game/engine/types";
 
 export function orderedAliveSeats(state: GameState): SeatNumber[] {
   return state.seatOrder.filter((seat) => state.aliveSeats.includes(seat));
@@ -37,24 +33,10 @@ export function shuffleInPlace<T>(values: T[], rng: Rng): T[] {
   return values;
 }
 
-function cloneRoundMap<T>(map: Record<number, T[]>): Record<number, T[]> {
+export function cloneRoundMap<T>(map: Record<number, T[]>): Record<number, T[]> {
   return Object.fromEntries(
     Object.entries(map).map(([round, items]) => [Number(round), [...items]]),
   );
-}
-
-export function cloneVotesByRound(votesByRound: GameState["votesByRound"]): GameState["votesByRound"] {
-  return cloneRoundMap(votesByRound);
-}
-
-export function cloneCluesByRound(cluesByRound: GameState["cluesByRound"]): GameState["cluesByRound"] {
-  return cloneRoundMap(cluesByRound);
-}
-
-export function cloneDiscussionByRound(
-  discussionByRound: GameState["discussionByRound"],
-): GameState["discussionByRound"] {
-  return cloneRoundMap(discussionByRound);
 }
 
 export function assignRoles(
