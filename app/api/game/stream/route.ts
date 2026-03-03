@@ -1,6 +1,7 @@
 import { getRun } from "workflow/api";
 
-import { getRunId, getGameStartIndex } from "@/lib/storage/redis";
+import { getGameStartIndex } from "@/lib/storage/redis";
+import { ensureWorkflowRunning } from "@/lib/workflows/ensure-running";
 import type { GameStreamEvent } from "@/lib/workflows/types";
 
 export const maxDuration = 300;
@@ -64,15 +65,10 @@ export async function GET(request: Request) {
   if (isReconnect) {
     startIndex = parseInt(searchParams.get("startIndex")!, 10) || 0;
   } else {
-    // New viewer — read current game info from Redis
-    runId = await getRunId();
-    if (!runId) {
-      return Response.json(
-        { error: "No game running. POST /api/game/start to begin." },
-        { status: 503 },
-      );
-    }
-    startIndex = await getGameStartIndex();
+    // New viewer — ensure a workflow is running, auto-start if needed
+    const result = await ensureWorkflowRunning();
+    runId = result.runId;
+    startIndex = result.isNew ? 0 : await getGameStartIndex();
   }
 
   // Get the WDK readable stream (runId guaranteed non-null at this point)
