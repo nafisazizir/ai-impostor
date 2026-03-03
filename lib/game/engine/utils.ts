@@ -37,24 +37,24 @@ export function shuffleInPlace<T>(values: T[], rng: Rng): T[] {
   return values;
 }
 
-export function cloneVotesByRound(votesByRound: GameState["votesByRound"]): GameState["votesByRound"] {
+function cloneRoundMap<T>(map: Record<number, T[]>): Record<number, T[]> {
   return Object.fromEntries(
-    Object.entries(votesByRound).map(([round, votes]) => [Number(round), [...votes]]),
+    Object.entries(map).map(([round, items]) => [Number(round), [...items]]),
   );
 }
 
+export function cloneVotesByRound(votesByRound: GameState["votesByRound"]): GameState["votesByRound"] {
+  return cloneRoundMap(votesByRound);
+}
+
 export function cloneCluesByRound(cluesByRound: GameState["cluesByRound"]): GameState["cluesByRound"] {
-  return Object.fromEntries(
-    Object.entries(cluesByRound).map(([round, clues]) => [Number(round), [...clues]]),
-  );
+  return cloneRoundMap(cluesByRound);
 }
 
 export function cloneDiscussionByRound(
   discussionByRound: GameState["discussionByRound"],
 ): GameState["discussionByRound"] {
-  return Object.fromEntries(
-    Object.entries(discussionByRound).map(([round, messages]) => [Number(round), [...messages]]),
-  );
+  return cloneRoundMap(discussionByRound);
 }
 
 export function assignRoles(

@@ -97,10 +97,6 @@ export function hostWordPairUserPrompt(): string {
 // Context builder
 // ---------------------------------------------------------------------------
 
-function playerLabel(seat: SeatNumber): string {
-  return playerName(seat);
-}
-
 export function gameContextSummary(state: GameState, player: SeatNumber): string {
   const lines: string[] = [];
   const alive = orderedAliveSeats(state);
@@ -113,7 +109,7 @@ export function gameContextSummary(state: GameState, player: SeatNumber): string
   lines.push("Alive players:");
   for (const seat of alive) {
     const marker = seat === player ? " (you)" : "";
-    lines.push(`  - ${playerLabel(seat)}${marker}`);
+    lines.push(`  - ${playerName(seat)}${marker}`);
   }
 
   // Eliminated players (with revealed roles)
@@ -122,7 +118,7 @@ export function gameContextSummary(state: GameState, player: SeatNumber): string
     lines.push("Eliminated players:");
     for (const elim of state.eliminations) {
       lines.push(
-        `  - ${playerLabel(elim.seat)} — revealed role: ${elim.role} (round ${elim.round})`,
+        `  - ${playerName(elim.seat)} — revealed role: ${elim.role} (round ${elim.round})`,
       );
     }
   }
@@ -137,7 +133,7 @@ export function gameContextSummary(state: GameState, player: SeatNumber): string
       lines.push("");
       lines.push(`Round ${round} clues:`);
       for (const clue of clues) {
-        lines.push(`  - ${playerLabel(clue.seat)}: "${clue.text}"`);
+        lines.push(`  - ${playerName(clue.seat)}: "${clue.text}"`);
       }
     }
   }
@@ -152,7 +148,7 @@ export function gameContextSummary(state: GameState, player: SeatNumber): string
       lines.push("");
       lines.push(`Round ${round} discussion:`);
       for (const msg of messages) {
-        lines.push(`  - [Pass ${msg.pass}] ${playerLabel(msg.seat)}: "${msg.text}"`);
+        lines.push(`  - [Pass ${msg.pass}] ${playerName(msg.seat)}: "${msg.text}"`);
       }
     }
   }
@@ -168,13 +164,13 @@ export function gameContextSummary(state: GameState, player: SeatNumber): string
       lines.push(`Round ${round} votes:`);
       for (const vote of votes) {
         lines.push(
-          `  - ${playerLabel(vote.voterSeat)} voted for ${playerLabel(vote.targetSeat)}`,
+          `  - ${playerName(vote.voterSeat)} voted for ${playerName(vote.targetSeat)}`,
         );
       }
       const tally = state.latestTallyByRound[round];
       if (tally) {
         const tallyEntries = Object.entries(tally)
-          .map(([seat, count]) => `${playerLabel(Number(seat) as SeatNumber)}: ${count}`)
+          .map(([seat, count]) => `${playerName(Number(seat) as SeatNumber)}: ${count}`)
           .join(", ");
         lines.push(`  Tally: ${tallyEntries}`);
       }
@@ -187,7 +183,7 @@ export function gameContextSummary(state: GameState, player: SeatNumber): string
     if (event.type === "mr_white_guess_made") {
       lines.push("");
       lines.push(
-        `Mr. White (${playerLabel(event.seat)}) guessed "${event.guess}" — ${event.wasCorrect ? "CORRECT" : "WRONG"}`,
+        `Mr. White (${playerName(event.seat)}) guessed "${event.guess}" — ${event.wasCorrect ? "CORRECT" : "WRONG"}`,
       );
     }
   }
@@ -203,7 +199,7 @@ export function playerSystemPrompt(state: GameState, player: SeatNumber): string
   const role = state.rolesBySeat[player];
   const lines: string[] = [];
 
-  lines.push(`You are ${playerLabel(player)} in a game of AI Impostor.`);
+  lines.push(`You are ${playerName(player)} in a game of AI Impostor.`);
   lines.push("");
 
   // Game rules summary

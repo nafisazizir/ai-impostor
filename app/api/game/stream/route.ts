@@ -13,7 +13,7 @@ import {
   removeListener,
   getGame,
 } from "@/lib/game/game-store";
-import { runStreamGame } from "@/lib/ai/stream-runner";
+import { runGame } from "@/lib/ai/runner";
 
 export const maxDuration = 300;
 
@@ -145,7 +145,7 @@ export async function GET(request: Request) {
       });
 
       // Fire-and-forget: run the game
-      runStreamGame(gameId, {
+      runGame(gameId, {
         onSnapshot: (snapshot) => pushSnapshot(gameId, snapshot),
         onThinkingStart: (data) => pushThinkingStart(gameId, data),
         onThinkingDelta: (text) => pushThinkingDelta(gameId, text),

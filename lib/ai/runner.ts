@@ -1,6 +1,6 @@
 import type { GameState } from "@/lib/game/state";
 import type { GameSnapshot } from "@/lib/game/snapshot";
-import type { SeatNumber, ThinkingEntry } from "@/lib/game/types";
+import type { SeatNumber, GamePhase, ThinkingEntry } from "@/lib/game/types";
 import {
   createInitialGameState,
   orderedAliveSeats,
@@ -14,13 +14,13 @@ import {
 import { getEnv } from "@/lib/config/env";
 
 import {
-  generateWordPair,
-  generateClue,
-  generateDiscussionMessage,
-  generateVote,
-  generateMrWhiteGuess,
-  type ActionResult,
+  streamWordPair,
+  streamClue,
+  streamDiscussionMessage,
+  streamVote,
+  streamMrWhiteGuess,
 } from "@/lib/ai/actions";
+import type { ActionResult } from "@/lib/ai/actions";
 
 import { playerName } from "@/lib/game/players";
 
@@ -37,19 +37,35 @@ async function withRetry<T>(
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       if (attempt === MAX_AI_ATTEMPTS) throw error;
-      console.warn(`[${label}] Attempt ${attempt}/${MAX_AI_ATTEMPTS} failed: ${msg}. Retrying...`);
+      console.warn(
+        `[${label}] Attempt ${attempt}/${MAX_AI_ATTEMPTS} failed: ${msg}. Retrying...`,
+      );
     }
   }
   throw new Error("unreachable");
 }
 
+export type RunGameOptions = {
+  onSnapshot?: (snapshot: GameSnapshot) => void;
+  onThinkingStart?: (data: {
+    seat: SeatNumber;
+    phase: GamePhase;
+    round: number;
+    pass?: number;
+  }) => void;
+  onThinkingDelta?: (text: string) => void;
+  onThinkingEnd?: (actionSummary: string) => void;
+  onAnswerStart?: (data: {
+    seat: SeatNumber;
+    kind: "clue" | "discussion" | "mr_white_guess";
+  }) => void;
+  onAnswerDelta?: (text: string) => void;
+  onAnswerEnd?: () => void;
+};
+
 export type GameRunResult = {
   finalState: GameState;
   thinking: ThinkingEntry[];
-};
-
-export type RunGameOptions = {
-  onSnapshot?: (snapshot: GameSnapshot) => void;
 };
 
 function pushThinking(
@@ -79,7 +95,11 @@ export async function runGame(
   const thinking: ThinkingEntry[] = [];
   let snapshotIndex = 0;
 
-  function emitSnapshot(label: string, state: GameState, prevLength: number): void {
+  function emitSnapshot(
+    label: string,
+    state: GameState,
+    prevLength: number,
+  ): void {
     options?.onSnapshot?.({
       index: snapshotIndex++,
       label,
@@ -89,9 +109,48 @@ export async function runGame(
     });
   }
 
+  function emitThinkingStart(
+    seat: SeatNumber,
+    state: GameState,
+    pass?: number,
+  ): void {
+    options?.onThinkingStart?.({
+      seat,
+      phase: state.currentPhase,
+      round: state.currentRound,
+      pass,
+    });
+  }
+
+  function emitThinkingDelta(text: string): void {
+    options?.onThinkingDelta?.(text);
+  }
+
+  function emitThinkingEnd(actionSummary: string): void {
+    options?.onThinkingEnd?.(actionSummary);
+  }
+
+  function emitAnswerStart(
+    seat: SeatNumber,
+    kind: "clue" | "discussion" | "mr_white_guess",
+  ): void {
+    options?.onAnswerStart?.({ seat, kind });
+  }
+
+  function emitAnswerDelta(text: string): void {
+    options?.onAnswerDelta?.(text);
+  }
+
+  function emitAnswerEnd(): void {
+    options?.onAnswerEnd?.();
+  }
+
   // 1. Generate word pair from host model
   console.log(`[${gameId}] Generating word pair...`);
-  const wordPairResult = await withRetry(() => generateWordPair(), `${gameId} word-pair`);
+  const wordPairResult = await withRetry(
+    () => streamWordPair((delta) => emitThinkingDelta(delta)),
+    `${gameId} word-pair`,
+  );
   console.log(
     `[${gameId}] Word pair: "${wordPairResult.output.civilianWord}" / "${wordPairResult.output.impostorWord}"`,
   );
@@ -121,39 +180,78 @@ export async function runGame(
     console.log(`[${gameId}] Clue phase (${aliveForClues.length} players)`);
     for (const seat of aliveForClues) {
       const prev = thinking.length;
-      const result = await withRetry(() => generateClue(state, seat), `${gameId} ${playerName(seat)} clue`);
+      emitThinkingStart(seat, state);
+      const result = await withRetry(
+        () => {
+          emitAnswerStart(seat, "clue");
+          return streamClue(
+            state,
+            seat,
+            (delta) => emitThinkingDelta(delta),
+            (delta) => emitAnswerDelta(delta),
+          );
+        },
+        `${gameId} P${seat} clue`,
+      );
+      emitAnswerEnd();
+      emitThinkingEnd(result.actionSummary);
       pushThinking(thinking, seat, state, result);
       state = submitClue(state, { seat, text: result.output.clue });
-      console.log(`[${gameId}]   ${playerName(seat)}: "${result.output.clue}"`);
+      console.log(`[${gameId}]   Player ${seat}: "${result.output.clue}"`);
       emitSnapshot(`${playerName(seat)} gave clue`, state, prev);
     }
 
     // --- Discussion phase ---
     for (let pass = 1; pass <= maxDiscussionPasses; pass++) {
       const aliveForDiscussion = orderedAliveSeats(state);
-      console.log(`[${gameId}] Discussion pass ${pass} (${aliveForDiscussion.length} players)`);
+      console.log(
+        `[${gameId}] Discussion pass ${pass} (${aliveForDiscussion.length} players)`,
+      );
       for (const seat of aliveForDiscussion) {
         const prev = thinking.length;
         let result: ActionResult<{ message: string }>;
+        emitThinkingStart(seat, state, pass);
         try {
           result = await withRetry(
-            () => generateDiscussionMessage(state, seat),
-            `${gameId} ${playerName(seat)} discussion`,
+            () => {
+              emitAnswerStart(seat, "discussion");
+              return streamDiscussionMessage(
+                state,
+                seat,
+                (delta) => emitThinkingDelta(delta),
+                (delta) => emitAnswerDelta(delta),
+              );
+            },
+            `${gameId} P${seat} discussion`,
           );
+          emitAnswerEnd();
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           console.error(
-            `[${gameId}] ${playerName(seat)} discussion failed after retries: ${msg}`,
+            `[${gameId}] P${seat} discussion failed after retries: ${msg}`,
           );
+          const fallbackText = "I need more time to think about this.";
+          emitAnswerStart(seat, "discussion");
+          for (const ch of fallbackText) {
+            emitAnswerDelta(ch);
+          }
+          emitAnswerEnd();
           result = {
-            output: { message: "I need more time to think about this." },
+            output: { message: fallbackText },
             reasoning: "(fallback: AI generation failed)",
             actionSummary: `Discussion failed — used fallback`,
           };
         }
+        emitThinkingEnd(result.actionSummary);
         pushThinking(thinking, seat, state, result, pass);
-        state = submitDiscussionMessage(state, { seat, text: result.output.message }, maxDiscussionPasses);
-        console.log(`[${gameId}]   ${playerName(seat)}: "${result.output.message}"`);
+        state = submitDiscussionMessage(
+          state,
+          { seat, text: result.output.message },
+          maxDiscussionPasses,
+        );
+        console.log(
+          `[${gameId}]   Player ${seat}: "${result.output.message}"`,
+        );
         emitSnapshot(`${playerName(seat)} discussed`, state, prev);
       }
     }
@@ -163,13 +261,21 @@ export async function runGame(
     console.log(`[${gameId}] Vote phase (${aliveForVotes.length} players)`);
     for (const seat of aliveForVotes) {
       const prev = thinking.length;
-      const result = await withRetry(() => generateVote(state, seat), `${gameId} ${playerName(seat)} vote`);
+      emitThinkingStart(seat, state);
+      const result = await withRetry(
+        () =>
+          streamVote(state, seat, (delta) => emitThinkingDelta(delta)),
+        `${gameId} P${seat} vote`,
+      );
+      emitThinkingEnd(result.actionSummary);
       pushThinking(thinking, seat, state, result);
       state = submitVote(state, {
         voterSeat: seat,
         targetSeat: result.output.targetPlayer as SeatNumber,
       });
-      console.log(`[${gameId}]   ${playerName(seat)} voted for ${playerName(result.output.targetPlayer as SeatNumber)}`);
+      console.log(
+        `[${gameId}]   Player ${seat} voted for Player ${result.output.targetPlayer}`,
+      );
       emitSnapshot(`${playerName(seat)} voted`, state, prev);
     }
 
@@ -179,7 +285,9 @@ export async function runGame(
     state = resolved.state;
 
     if (resolved.result.eliminatedSeat === null) {
-      console.log(`[${gameId}] Tie — no elimination. Advancing to next round.`);
+      console.log(
+        `[${gameId}] Tie — no elimination. Advancing to next round.`,
+      );
       emitSnapshot("Tie — no elimination", state, thinking.length);
       continue;
     }
@@ -188,21 +296,46 @@ export async function runGame(
     const eliminatedRole = state.rolesBySeat[eliminatedSeat];
     state = applyElimination(state, resolved.result);
     console.log(
-      `[${gameId}] Eliminated: ${playerName(eliminatedSeat)} (${eliminatedRole})`,
+      `[${gameId}] Eliminated: Player ${eliminatedSeat} (${eliminatedRole})`,
     );
-    emitSnapshot(`${playerName(eliminatedSeat)} eliminated`, state, thinking.length);
+    emitSnapshot(
+      `${playerName(eliminatedSeat)} eliminated`,
+      state,
+      thinking.length,
+    );
 
     // --- Mr. White guess (if applicable) ---
-    if (eliminatedRole === "mr_white" && state.currentPhase === "elimination") {
+    if (
+      eliminatedRole === "mr_white" &&
+      state.currentPhase === "elimination"
+    ) {
       console.log(`[${gameId}] Mr. White gets a final guess...`);
       const prev = thinking.length;
-      const guessResult = await withRetry(() => generateMrWhiteGuess(state, eliminatedSeat), `${gameId} ${playerName(eliminatedSeat)} mr-white-guess`);
+      emitThinkingStart(eliminatedSeat, state);
+      const guessResult = await withRetry(
+        () => {
+          emitAnswerStart(eliminatedSeat, "mr_white_guess");
+          return streamMrWhiteGuess(
+            state,
+            eliminatedSeat,
+            (delta) => emitThinkingDelta(delta),
+            (delta) => emitAnswerDelta(delta),
+          );
+        },
+        `${gameId} P${eliminatedSeat} mr-white-guess`,
+      );
+      emitAnswerEnd();
+      emitThinkingEnd(guessResult.actionSummary);
       pushThinking(thinking, eliminatedSeat, state, guessResult);
       state = resolveMrWhiteGuess(state, guessResult.output.guess);
       console.log(
         `[${gameId}] Mr. White guessed: "${guessResult.output.guess}" — ${state.outcome?.winner === "mr_white" ? "CORRECT!" : "WRONG"}`,
       );
-      emitSnapshot(`Mr. White guessed: "${guessResult.output.guess}"`, state, prev);
+      emitSnapshot(
+        `Mr. White guessed: "${guessResult.output.guess}"`,
+        state,
+        prev,
+      );
     }
 
     if (state.currentPhase === "finished") {
@@ -211,10 +344,14 @@ export async function runGame(
   }
 
   if (state.currentPhase !== "finished") {
-    console.warn(`[${gameId}] Game did not finish within ${MAX_ROUNDS} rounds.`);
+    console.warn(
+      `[${gameId}] Game did not finish within ${MAX_ROUNDS} rounds.`,
+    );
   }
 
-  console.log(`[${gameId}] Game finished. Outcome: ${JSON.stringify(state.outcome)}`);
+  console.log(
+    `[${gameId}] Game finished. Outcome: ${JSON.stringify(state.outcome)}`,
+  );
   emitSnapshot("Game over", state, thinking.length);
   return { finalState: state, thinking };
 }
