@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 import type { MockSnapshot } from "@/lib/game/mock-states";
 import type { GameSnapshot } from "@/lib/game/snapshot";
@@ -13,6 +19,7 @@ import type {
 } from "@/hooks/use-game-stream";
 import { deriveActiveSeat } from "@/lib/game/ui-helpers";
 import { useGameStream } from "@/hooks/use-game-stream";
+import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { GameHeader } from "@/components/game/game-header";
@@ -132,10 +139,11 @@ function SpectatorShell({
   error,
   onAction,
 }: SpectatorShellProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(true);
+  const togglePanel = () => setPanelOpen((v) => !v);
 
   return (
-    <div className="flex h-screen flex-col md:flex-row">
+    <div className="relative flex h-screen flex-col md:flex-row">
       {/* Left column: header + game area */}
       <div className="flex min-h-0 flex-1 flex-col">
         <GameHeader state={state} status={status} />
@@ -190,12 +198,40 @@ function SpectatorShell({
         </div>
       </div>
 
+      {/* Toggle tab — pinned to right edge (desktop) / bottom edge (mobile), always visible */}
+      <button
+        onClick={togglePanel}
+        className={cn(
+          "bg-background hover:bg-muted text-muted-foreground border-border absolute z-20 flex cursor-pointer items-center justify-center border transition-all duration-300",
+          // Mobile: tab above bottom panel
+          "bottom-0 left-1/2 h-5 w-10 -translate-x-1/2 rounded-t-lg border-b-0",
+          panelOpen ? "max-md:bottom-[25vh]" : "max-md:bottom-0",
+          // Desktop: tab on left side of panel
+          "md:top-1/2 md:bottom-auto md:left-auto md:h-10 md:w-5 md:translate-x-0 md:-translate-y-1/2 md:rounded-t-none md:rounded-l-lg md:border-r-0 md:border-b",
+          panelOpen ? "md:right-80 xl:right-96" : "md:right-0",
+        )}
+        aria-label={
+          panelOpen ? "Collapse thinking panel" : "Expand thinking panel"
+        }
+      >
+        {panelOpen ? (
+          <>
+            <ChevronDown className="size-2.5 md:hidden" />
+            <ChevronRight className="hidden size-2.5 md:block" />
+          </>
+        ) : (
+          <>
+            <ChevronUp className="size-2.5 md:hidden" />
+            <ChevronLeft className="hidden size-2.5 md:block" />
+          </>
+        )}
+      </button>
+
       <ThinkingPanel
         thinking={thinking}
         streamingThinking={streamingThinking}
         streamingAnswer={streamingAnswer}
-        collapsed={collapsed}
-        onToggle={() => setCollapsed((c) => !c)}
+        open={panelOpen}
       />
     </div>
   );
