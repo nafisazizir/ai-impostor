@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useRef, useState } from "react";
 
 import type { GamePhase, ThinkingEntry } from "@/lib/game/types";
 import type {
@@ -88,15 +88,15 @@ export function ThinkingPanel({
               Game started
             </p>
             {thinking.map((entry, i) => {
-              const Logo = shouldShowHeader(thinking, i) ? playerLogo(entry.seat) : null;
+              const showHeader = shouldShowHeader(thinking, i);
               return (
                 <div
                   key={`${entry.seat}-${entry.phase}-${entry.round}-${i}`}
                   className="transition-opacity duration-300"
                 >
-                  {Logo && (
+                  {showHeader && (
                     <div className="mb-1 flex items-center gap-1.5">
-                      <Logo className="text-muted-foreground size-3.5" />
+                      {createElement(playerLogo(entry.seat), { className: "text-muted-foreground size-3.5" })}
                       <span className="text-muted-foreground font-mono text-xs">
                         {playerName(entry.seat)}
                         <span className="text-muted-foreground/60 ml-2">
@@ -138,12 +138,10 @@ function StreamingEntry({
   thinking: StreamingThinking;
   answer?: StreamingAnswer | null;
 }) {
-  const Logo = playerLogo(thinking.seat);
-
   return (
     <div className="transition-opacity duration-300">
       <div className="mb-1 flex items-center gap-1.5">
-        <Logo className="text-muted-foreground size-3.5" />
+        {createElement(playerLogo(thinking.seat), { className: "text-muted-foreground size-3.5" })}
         <span className="font-mono text-xs">
           <span
             className={cn(
