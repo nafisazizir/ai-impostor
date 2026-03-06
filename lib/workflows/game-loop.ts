@@ -100,6 +100,51 @@ function buildSnapshot(
   return { index, label, state, thinking: [...thinking], newThinkingStartIndex };
 }
 
+// ─── Streamed action wrapper ────────────────────────────────────────────────
+
+/**
+ * Guarantees exactly one answer:start / answer:end pair per player turn.
+ * On AI failure, streams fallback text char-by-char and returns a fallback ActionResult.
+ */
+async function withStreamedAction<T>(
+  emit: (event: GameStreamEvent) => void,
+  seat: SeatNumber,
+  actionKind: "clue" | "discussion" | "mr_white_guess",
+  action: (
+    onThinkingDelta: (delta: string) => void,
+    onAnswerDelta: (delta: string) => void,
+  ) => Promise<ActionResult<T>>,
+  fallbackOutput: T,
+  fallbackText: string,
+  gameId: string,
+  label: string,
+): Promise<ActionResult<T>> {
+  emit({ kind: "answer:start", seat, actionKind });
+
+  try {
+    const result = await action(
+      (delta) => emit({ kind: "thinking:delta", text: delta }),
+      (delta) => emit({ kind: "answer:delta", text: delta }),
+    );
+    emit({ kind: "answer:end" });
+    return result;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`[${gameId}] P${seat} ${label} failed: ${msg}`);
+
+    for (const ch of fallbackText) {
+      emit({ kind: "answer:delta", text: ch });
+    }
+    emit({ kind: "answer:end" });
+
+    return {
+      output: fallbackOutput,
+      reasoning: `(fallback: AI generation failed)`,
+      actionSummary: `${label} failed — used fallback`,
+    };
+  }
+}
+
 // ─── Step functions ──────────────────────────────────────────────────────────
 
 async function configStep() {
@@ -177,16 +222,18 @@ async function cluePhaseStep(
         phase: currentState.currentPhase,
         round: currentState.currentRound,
       });
-      emit({ kind: "answer:start", seat, actionKind: "clue" });
-
-      const result = await streamClue(
-        currentState,
+      const result = await withStreamedAction(
+        emit,
         seat,
-        (delta) => emit({ kind: "thinking:delta", text: delta }),
-        (delta) => emit({ kind: "answer:delta", text: delta }),
+        "clue",
+        (onThinking, onAnswer) =>
+          streamClue(currentState, seat, onThinking, onAnswer),
+        { clue: "Interesting" },
+        "Interesting",
+        currentState.gameId,
+        "Clue generation",
       );
 
-      emit({ kind: "answer:end" });
       emit({ kind: "thinking:end", actionSummary: result.actionSummary });
 
       const entry = buildThinkingEntry(seat, currentState, result);
@@ -234,7 +281,6 @@ async function discussionPhaseStep(
   const eventsWritten = await withWriter(async (emit) => {
     for (const seat of aliveSeats) {
       const prevLen = allThinking.length;
-      let result: ActionResult<{ message: string }>;
 
       emit({
         kind: "thinking:start",
@@ -244,36 +290,17 @@ async function discussionPhaseStep(
         pass,
       });
 
-      try {
-        emit({ kind: "answer:start", seat, actionKind: "discussion" });
-
-        result = await streamDiscussionMessage(
-          currentState,
-          seat,
-          (delta) => emit({ kind: "thinking:delta", text: delta }),
-          (delta) => emit({ kind: "answer:delta", text: delta }),
-        );
-
-        emit({ kind: "answer:end" });
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        console.error(
-          `[${currentState.gameId}] P${seat} discussion failed: ${msg}`,
-        );
-
-        const fallbackText = "I need more time to think about this.";
-        emit({ kind: "answer:start", seat, actionKind: "discussion" });
-        for (const ch of fallbackText) {
-          emit({ kind: "answer:delta", text: ch });
-        }
-        emit({ kind: "answer:end" });
-
-        result = {
-          output: { message: fallbackText },
-          reasoning: "(fallback: AI generation failed)",
-          actionSummary: "Discussion failed — used fallback",
-        };
-      }
+      const result = await withStreamedAction(
+        emit,
+        seat,
+        "discussion",
+        (onThinking, onAnswer) =>
+          streamDiscussionMessage(currentState, seat, onThinking, onAnswer),
+        { message: "I need more time to think about this." },
+        "I need more time to think about this.",
+        currentState.gameId,
+        "Discussion",
+      );
 
       emit({ kind: "thinking:end", actionSummary: result.actionSummary });
 
@@ -332,11 +359,26 @@ async function votePhaseStep(
         round: currentState.currentRound,
       });
 
-      const result = await streamVote(
-        currentState,
-        seat,
-        (delta) => emit({ kind: "thinking:delta", text: delta }),
-      );
+      let result: ActionResult<{ targetPlayer: number }>;
+
+      try {
+        result = await streamVote(
+          currentState,
+          seat,
+          (delta) => emit({ kind: "thinking:delta", text: delta }),
+        );
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error(`[${currentState.gameId}] P${seat} vote failed: ${msg}`);
+
+        const validTargets = aliveSeats.filter((s) => s !== seat);
+        const fallbackTarget = validTargets[Math.floor(Math.random() * validTargets.length)];
+        result = {
+          output: { targetPlayer: fallbackTarget },
+          reasoning: "(fallback: AI generation failed)",
+          actionSummary: "Vote failed — used random fallback",
+        };
+      }
 
       emit({ kind: "thinking:end", actionSummary: result.actionSummary });
 
@@ -465,16 +507,18 @@ async function mrWhiteGuessStep(
       phase: currentState.currentPhase,
       round: currentState.currentRound,
     });
-    emit({ kind: "answer:start", seat, actionKind: "mr_white_guess" });
-
-    const result = await streamMrWhiteGuess(
-      currentState,
+    const result = await withStreamedAction(
+      emit,
       seat,
-      (delta) => emit({ kind: "thinking:delta", text: delta }),
-      (delta) => emit({ kind: "answer:delta", text: delta }),
+      "mr_white_guess",
+      (onThinking, onAnswer) =>
+        streamMrWhiteGuess(currentState, seat, onThinking, onAnswer),
+      { guess: "unknown" },
+      "unknown",
+      currentState.gameId,
+      "Mr. White guess",
     );
 
-    emit({ kind: "answer:end" });
     emit({ kind: "thinking:end", actionSummary: result.actionSummary });
 
     const entry = buildThinkingEntry(seat, currentState, result);
