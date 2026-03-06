@@ -202,12 +202,12 @@ function SpectatorShell({
       <button
         onClick={togglePanel}
         className={cn(
-          "bg-background hover:bg-muted text-muted-foreground border-border absolute z-20 flex cursor-pointer items-center justify-center border transition-all duration-300",
+          "bg-background hover:bg-muted text-muted-foreground absolute z-20 flex cursor-pointer items-center justify-center transition-all duration-300",
           // Mobile: tab above bottom panel
           "bottom-0 left-1/2 h-5 w-10 -translate-x-1/2 rounded-t-lg border-b-0",
           panelOpen ? "max-md:bottom-[25vh]" : "max-md:bottom-0",
           // Desktop: tab on left side of panel
-          "md:top-1/2 md:bottom-auto md:left-auto md:h-10 md:w-5 md:translate-x-0 md:-translate-y-1/2 md:rounded-t-none md:rounded-l-lg md:border-r-0 md:border-b",
+          "md:top-1/2 md:bottom-auto md:left-auto md:h-10 md:w-5 md:translate-x-0 md:-translate-y-1/2 md:rounded-t-none md:rounded-l-lg",
           panelOpen ? "md:right-80 xl:right-96" : "md:right-0",
         )}
         aria-label={
@@ -216,13 +216,13 @@ function SpectatorShell({
       >
         {panelOpen ? (
           <>
-            <ChevronDown className="size-2.5 md:hidden" />
-            <ChevronRight className="hidden size-2.5 md:block" />
+            <ChevronDown className="size-3.5 md:hidden" />
+            <ChevronRight className="hidden size-3.5 md:block" />
           </>
         ) : (
           <>
-            <ChevronUp className="size-2.5 md:hidden" />
-            <ChevronLeft className="hidden size-2.5 md:block" />
+            <ChevronUp className="size-3.5 md:hidden" />
+            <ChevronLeft className="hidden size-3.5 md:block" />
           </>
         )}
       </button>
