@@ -4,7 +4,7 @@ import type { Role, SeatNumber } from "@/lib/game/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-const ROLE_BADGE: Record<Role, { label: string; className: string }> = {
+export const ROLE_BADGE: Record<Role, { label: string; className: string }> = {
   civilian: { label: "civilian", className: "text-blue-400 bg-blue-400/10" },
   impostor: { label: "impostor", className: "text-red-400 bg-red-400/10" },
   mr_white: { label: "mr white", className: "text-white/70 bg-white/5" },
