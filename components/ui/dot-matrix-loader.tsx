@@ -25,9 +25,12 @@ function DotMatrixLoader({
   const { cols, size: blockSize, gap } = config[size];
   const total = cols * 2;
 
-  const [opacities, setOpacities] = useState(() => generatePattern(total));
+  const [opacities, setOpacities] = useState<number[]>(() =>
+    Array.from({ length: total }, () => 0),
+  );
 
   useEffect(() => {
+    setOpacities(generatePattern(total));
     const id = setInterval(() => setOpacities(generatePattern(total)), 150);
     return () => clearInterval(id);
   }, [total]);
