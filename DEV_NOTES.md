@@ -154,12 +154,11 @@ Checkpoint:
 
 Goal: make every step legible and compelling to watch live.
 
-### Status (Partial — Spectator UI)
+### Status (Implemented — Live Streaming)
 
-- Spectator UI built with mock data: seat ring, thinking panel, game header.
+- Spectator UI connected to live SSE streaming via `useGameStream()` hook and `/api/game/stream` endpoint.
 - Components in `components/game/` (game-spectator, seat-ring, seat-card, thinking-panel, game-header).
-- Driven by `mockSnapshots` from `lib/game/mock-states.ts`.
-- Not yet connected to live AI game data or streaming.
+- Mock data infrastructure removed; UI is live-only.
 
 Steps:
 
