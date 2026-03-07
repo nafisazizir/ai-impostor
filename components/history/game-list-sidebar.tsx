@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 
 import type { GameSummary } from "@/lib/game/persisted";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DotMatrixLoader } from "@/components/ui/dot-matrix-loader";
 import { GameSummaryCard } from "@/components/history/game-summary-card";
 
 export function GameListSidebar({
@@ -69,10 +69,8 @@ export function GameListSidebar({
         </div>
 
         {loading && (
-          <div className="flex flex-col gap-2 p-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-lg" />
-            ))}
+          <div className="flex items-center justify-center p-6">
+            <DotMatrixLoader size="md" />
           </div>
         )}
 

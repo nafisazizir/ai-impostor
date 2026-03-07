@@ -15,6 +15,7 @@ import { deriveActiveSeat } from "@/lib/game/ui-helpers";
 import { useGameStream } from "@/hooks/use-game-stream";
 
 import { Button } from "@/components/ui/button";
+import { DotMatrixLoader } from "@/components/ui/dot-matrix-loader";
 import { GameHeader } from "@/components/game/game-header";
 import { SeatRing } from "@/components/game/seat-ring";
 import { ThinkingPanel } from "@/components/game/thinking-panel";
@@ -136,6 +137,14 @@ function SpectatorShell({
   const [panelOpen, setPanelOpen] = useState(true);
   const togglePanel = () => setPanelOpen((v) => !v);
 
+  if (status === "connecting" && !state) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <DotMatrixLoader />
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex h-screen flex-col md:flex-row">
       {/* Left column: header + game area */}
@@ -143,11 +152,6 @@ function SpectatorShell({
         <GameHeader state={state} status={status} />
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
-          {status === "connecting" && !state && (
-            <p className="text-muted-foreground animate-pulse font-mono text-sm">
-              Connecting to live game...
-            </p>
-          )}
 
           {status === "error" && (
             <>
@@ -167,9 +171,12 @@ function SpectatorShell({
           {status === "between-games" && (
             <>
               {state && <SeatRing state={state} activeSeat={null} />}
-              <p className="text-muted-foreground animate-pulse font-mono text-sm">
-                Next game starting...
-              </p>
+              <div className="flex flex-col items-center gap-3">
+                <DotMatrixLoader />
+                <p className="text-muted-foreground font-mono text-sm">
+                  Next game starting...
+                </p>
+              </div>
             </>
           )}
 

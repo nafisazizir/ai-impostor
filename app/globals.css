@@ -153,7 +153,16 @@
   }
 }
 
+.dot-matrix-block {
+  background-color: var(--foreground);
+  transition: opacity 0.2s ease-in-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .dot-matrix-block {
+    transition: none;
+  }
+
   .animate-pulse {
     animation: none;
   }

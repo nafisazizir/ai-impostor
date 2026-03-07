@@ -71,7 +71,7 @@ export function HistoryView({
 
       {/* Center content */}
       <div className="flex min-h-0 flex-1 flex-col">
-        {selectedGame && !loading ? (
+        {selectedGame ? (
           <>
             <HistoryGameHeader summary={selectedGame.summary} />
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6">
@@ -106,12 +106,6 @@ export function HistoryView({
               </Sheet>
             </div>
           </>
-        ) : loading ? (
-          <div className="flex flex-1 items-center justify-center">
-            <p className="text-muted-foreground animate-pulse font-mono text-sm">
-              Loading game...
-            </p>
-          </div>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4">
             <p className="text-muted-foreground/60 font-mono text-sm">
