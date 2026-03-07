@@ -2,6 +2,7 @@ import { getRun } from "workflow/api";
 
 import { getEnv } from "@/lib/config/env";
 import {
+  clearLiveGameId,
   getGameCount,
   getGameStartIndex,
   getLiveGameId,
@@ -99,12 +100,22 @@ export async function GET(request: Request) {
   );
 
   // Decide whether to serve a replay instead of a live game.
-  // Seed mode: replay only when buffer is full (workflow has stopped).
+  // Seed mode: replay when buffer is full (workflow has stopped). Skip the hasLiveGame
+  // check because the workflow always exits before playing when the buffer is full,
+  // so any liveGameId is stale. Also handle reconnects — the previous live stream was
+  // empty (workflow exited immediately), so serve a replay instead of retrying.
   // On-demand mode: replay when no live game is running (bridge gap while one spins up).
   const seedBufferFull = env.GAME_MODE === "seed" && storedGameCount >= env.REPLAY_BUFFER_TARGET;
-  const shouldReplay = !isReconnect && !hasLiveGame && (seedBufferFull || isOnDemand) && storedGameCount > 0;
+  const shouldReplay =
+    (seedBufferFull && storedGameCount > 0) ||
+    (!isReconnect && !hasLiveGame && isOnDemand && storedGameCount > 0);
 
   if (shouldReplay) {
+    // Clear stale liveGameId in seed mode — workflow never plays when buffer is full
+    if (seedBufferFull && hasLiveGame) {
+      await clearLiveGameId();
+    }
+
     const storedGame = await getRandomPersistedGame();
     if (storedGame) {
       if (isOnDemand) {

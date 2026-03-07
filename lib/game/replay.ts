@@ -17,15 +17,22 @@ import { playerName } from "@/lib/game/players";
 
 // ─── Timing constants ────────────────────────────────────────────────────────
 
-const THINKING_CHUNK_DELAY_MS = 15;
-const ANSWER_CHAR_DELAY_MS = 20;
-const POST_SNAPSHOT_DELAY_MS = 300;
-const POST_GAME_START_DELAY_MS = 500;
+const THINKING_CHUNK_DELAY_MS = 30;
+const ANSWER_CHAR_DELAY_MS = 40;
+const POST_SNAPSHOT_DELAY_MS = 600;
+const POST_GAME_START_DELAY_MS = 800;
+const PRE_THINKING_MIN_MS = 800;
+const PRE_THINKING_MAX_MS = 1800;
+const POST_THINKING_DELAY_MS = 400;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function randomDelay(minMs: number, maxMs: number): Promise<void> {
+  return delay(minMs + Math.random() * (maxMs - minMs));
 }
 
 function chunkText(text: string, chunkSize: number): string[] {
@@ -322,6 +329,9 @@ async function emitReplay(
     // Use the reconstructed state for this action
     const stateForSnapshot = actionStates[i] ?? finalState;
 
+    // Random pause before each turn — simulates AI "warming up"
+    await randomDelay(PRE_THINKING_MIN_MS, PRE_THINKING_MAX_MS);
+
     // thinking:start
     const thinkingStart: GameStreamEvent = {
       kind: "thinking:start",
@@ -344,6 +354,9 @@ async function emitReplay(
 
     // thinking:end
     enqueue({ kind: "thinking:end", actionSummary: entry.actionSummary });
+
+    // Brief pause between thinking and answer
+    await delay(POST_THINKING_DELAY_MS);
 
     // answer:start
     const actionKind = phaseToActionKind(entry.phase);
