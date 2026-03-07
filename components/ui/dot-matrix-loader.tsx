@@ -10,8 +10,8 @@ const config = {
 
 function generatePattern(total: number) {
   return Array.from({ length: total }, () => {
-    const visible = Math.random() < 0.5;
-    return visible ? 0.5 + Math.random() * 0.5 : 0;
+    const visible = Math.random() < 0.3;
+    return visible ? 0.3 + Math.random() * 0.5 : 0;
   });
 }
 
@@ -30,8 +30,9 @@ function DotMatrixLoader({
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpacities(generatePattern(total));
-    const id = setInterval(() => setOpacities(generatePattern(total)), 150);
+    const id = setInterval(() => setOpacities(generatePattern(total)), 100);
     return () => clearInterval(id);
   }, [total]);
 

@@ -126,7 +126,7 @@ function SpectatorShell({
             </>
           )}
 
-          {status === "between-games" && (
+          {/* {status === "between-games" && (
             <>
               {state && <SeatRing state={state} activeSeat={null} />}
               <div className="flex flex-col items-center gap-3">
@@ -136,7 +136,7 @@ function SpectatorShell({
                 </p>
               </div>
             </>
-          )}
+          )} */}
 
           {(status === "playing" || status === "finished") && state && (
             <>
