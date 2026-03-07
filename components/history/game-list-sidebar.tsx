@@ -39,7 +39,7 @@ export function GameListSidebar({
   }
 
   return (
-    <div className="border-border flex h-full w-72 shrink-0 flex-col border-r">
+    <div className="border-border flex h-full w-full md:w-72 shrink-0 flex-col md:border-r">
       <div className="border-border flex items-center gap-2 border-b px-4 py-3">
         <Link
           href="/"

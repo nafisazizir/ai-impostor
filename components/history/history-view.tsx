@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  Menu,
 } from "lucide-react";
 
 import type { GameSummary, PersistedGame } from "@/lib/game/persisted";
@@ -86,13 +85,32 @@ export function HistoryView({
               <SeatRing state={selectedGame.state} activeSeat={null} />
             </div>
 
-            <div className="p-2">
-              <Link
-                href={"/"}
-                className="text-muted-foreground/50 block font-mono text-xs tracking-tight md:hidden"
-              >
-                history
-              </Link>
+            <div className="p-2 md:hidden">
+              <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                <SheetTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground/50 h-auto cursor-pointer p-0 font-mono text-xs tracking-tight"
+                    />
+                  }
+                >
+                  history
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0" showCloseButton={false}>
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>Game History</SheetTitle>
+                  </SheetHeader>
+
+                  <GameListSidebar
+                    initialGames={initialGames}
+                    total={total}
+                    selectedGameId={selectedGameId}
+                    onSelectGame={selectGame}
+                  />
+                </SheetContent>
+              </Sheet>
             </div>
           </>
         ) : loading ? (
