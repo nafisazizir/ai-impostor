@@ -152,7 +152,7 @@ function SpectatorShell({
       <div className="flex min-h-0 flex-1 flex-col">
         <GameHeader state={state} status={status} />
 
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
+        <main id="main-content" className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
           {status === "error" && (
             <>
               <p className="text-sm text-red-400">
@@ -196,22 +196,24 @@ function SpectatorShell({
               )}
             </>
           )}
-        </div>
+        </main>
 
-        <div className="text-muted-foreground/50 flex flex-row items-center justify-end gap-4 p-2 font-mono text-xs tracking-tight">
+        <footer className="text-muted-foreground/50 flex flex-row items-center justify-end gap-4 p-2 font-mono text-xs tracking-tight">
           <Link
             href="/history"
-            className="hover:text-muted-foreground transition-colors duration-200"
+            className="hover:text-muted-foreground px-2 py-2 transition-colors duration-200"
           >
             history
           </Link>
-          <Link
+          <a
             href="https://x.com/nafisazizir"
-            className="hover:text-muted-foreground transition-colors duration-200"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-muted-foreground px-2 py-2 transition-colors duration-200"
           >
             @nafisazizir
-          </Link>
-        </div>
+          </a>
+        </footer>
       </div>
 
       <ThinkingPanelToggle open={panelOpen} onToggle={togglePanel} />

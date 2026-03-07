@@ -5,6 +5,7 @@ import { ensureWorkflowRunning } from "@/lib/workflows/ensure-running";
 import type { GameStreamEvent } from "@/lib/workflows/types";
 
 export const maxDuration = 300;
+export const dynamic = "force-dynamic";
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
 

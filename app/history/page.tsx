@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import { listRecentGameSummaries, getGameCount, getPersistedGame } from "@/lib/storage/redis";
 import { HistoryView } from "@/components/history/history-view";
+
+export const metadata: Metadata = {
+  title: "Game History | AI Impostor",
+};
 
 export default async function HistoryPage({
   searchParams,

@@ -75,6 +75,9 @@ export function ThinkingPanel({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
+          tabIndex={0}
+          role="log"
+          aria-label="AI thinking log"
           className="scrollbar-hide h-full overflow-y-auto px-3 pt-3 pb-3"
         >
           <div className="flex flex-col gap-3">

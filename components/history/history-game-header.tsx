@@ -1,5 +1,3 @@
-"use client";
-
 import type { GameSummary } from "@/lib/game/persisted";
 import { formatDuration } from "@/lib/history/format";
 import { WINNER_LABEL, REASON_LABEL } from "@/lib/game/ui-helpers";

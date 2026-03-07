@@ -15,6 +15,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AI Impostor",
   description: "Watch AI agents play a social deduction game",
+  openGraph: {
+    title: "AI Impostor",
+    description: "Watch AI agents play a social deduction game",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "AI Impostor",
+    description: "Watch AI agents play a social deduction game",
+  },
 };
 
 export const viewport: Viewport = {
@@ -32,6 +42,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2"
+        >
+          Skip to content
+        </a>
         {children}
       </body>
     </html>

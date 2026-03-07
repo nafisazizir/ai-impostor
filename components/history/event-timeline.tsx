@@ -117,6 +117,9 @@ export function EventTimeline({ events }: { events: GameEvent[] }) {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
+        tabIndex={0}
+        role="log"
+        aria-label="Game event timeline"
         className="scrollbar-hide h-full overflow-y-auto px-6 pb-6"
       >
         {Array.from(grouped.entries()).map(([round, roundEvents]) => (

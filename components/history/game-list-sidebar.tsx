@@ -43,6 +43,7 @@ export function GameListSidebar({
       <div className="border-border flex items-center gap-2 border-b px-4 py-3">
         <Link
           href="/"
+          aria-label="Back to live game"
           className="text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="size-4" />
@@ -50,7 +51,7 @@ export function GameListSidebar({
         <h2 className="text-sm font-medium tracking-tight">Game History</h2>
       </div>
 
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto">
+      <div tabIndex={0} role="region" aria-label="Game list" className="scrollbar-hide min-h-0 flex-1 overflow-y-auto">
         {games.length === 0 && !loading && (
           <p className="text-muted-foreground/60 px-3 py-8 text-center font-mono text-xs">
             No games yet
