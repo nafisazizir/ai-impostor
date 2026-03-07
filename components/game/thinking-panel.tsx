@@ -10,6 +10,7 @@ import type {
 import { playerLogo, playerName } from "@/lib/game/players";
 import { cn } from "@/lib/utils";
 import { PHASE_LABEL } from "@/lib/game/ui-helpers";
+import { MarkdownProse } from "@/components/ui/markdown-prose";
 
 const ANSWER_PREFIX: Record<string, string> = {
   clue: 'Gave clue: "',
@@ -102,9 +103,9 @@ export function ThinkingPanel({
                       </span>
                     </div>
                   )}
-                  <p className="text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap">
-                    {entry.text}
-                  </p>
+                  <div className="text-muted-foreground/60 font-mono text-xs leading-tight">
+                    <MarkdownProse content={entry.text} />
+                  </div>
                   {entry.actionSummary && (
                     <p className="text-muted-foreground mt-0.5 font-mono text-xs">
                       {entry.actionSummary}
@@ -154,11 +155,9 @@ function StreamingEntry({
           </span>
         </span>
       </div>
-      <p
-        className="text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap"
-      >
-        {thinking.text}
-      </p>
+      <div className="text-muted-foreground/60 font-mono text-xs leading-tight">
+        <MarkdownProse content={thinking.text} />
+      </div>
       {answer?.text ? (
         <p className="text-muted-foreground mt-0.5 font-mono text-xs leading-tight whitespace-pre-wrap">
           {ANSWER_PREFIX[answer.kind]}
