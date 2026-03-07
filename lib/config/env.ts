@@ -89,10 +89,10 @@ export function getEnv(): AppEnv {
     );
   }
 
-  const playerLineup = (process.env.PLAYER_LINEUP ?? DEFAULT_PLAYER_LINEUP) as string;
+  const playerLineup = (process.env.NEXT_PUBLIC_PLAYER_LINEUP ?? DEFAULT_PLAYER_LINEUP) as string;
   if (!VALID_PLAYER_LINEUPS.includes(playerLineup as PlayerLineup)) {
     throw new Error(
-      `Invalid PLAYER_LINEUP value "${playerLineup}". Expected one of: ${VALID_PLAYER_LINEUPS.join(", ")}.`,
+      `Invalid NEXT_PUBLIC_PLAYER_LINEUP value "${playerLineup}". Expected one of: ${VALID_PLAYER_LINEUPS.join(", ")}.`,
     );
   }
 

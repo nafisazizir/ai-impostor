@@ -142,7 +142,7 @@ const REASONING_PLAYERS: Record<SeatNumber, PlayerConfig> = {
 };
 
 const lineup: PlayerLineup =
-  (process.env.PLAYER_LINEUP as PlayerLineup | undefined) === "reasoning"
+  (process.env.NEXT_PUBLIC_PLAYER_LINEUP as PlayerLineup | undefined) === "reasoning"
     ? "reasoning"
     : "budget";
 
