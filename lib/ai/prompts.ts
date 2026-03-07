@@ -173,8 +173,7 @@ export function gameContextSummary(state: GameState, player: SeatNumber): string
   }
 
   // Mr. White guess results
-  const guessEvents = state.events.filter((e) => e.type === "mr_white_guess_made");
-  for (const event of guessEvents) {
+  for (const event of state.events) {
     if (event.type === "mr_white_guess_made") {
       lines.push("");
       lines.push(

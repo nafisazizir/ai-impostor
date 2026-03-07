@@ -1,7 +1,34 @@
 import type { GameState } from "@/lib/game/state";
-import type { SeatNumber } from "@/lib/game/types";
+import type { GameOutcome, GamePhase, Role, SeatNumber } from "@/lib/game/types";
 
 import { orderedAliveSeats } from "@/lib/game/engine";
+
+export const PHASE_LABEL: Record<GamePhase, string> = {
+  setup: "Setup",
+  clue: "Clue",
+  discussion: "Discussion",
+  vote: "Vote",
+  elimination: "Elimination",
+  finished: "Finished",
+};
+
+export const WINNER_LABEL: Record<GameOutcome["winner"], string> = {
+  civilians: "Civilians Win",
+  impostor: "Impostor Wins",
+  mr_white: "Mr. White Wins",
+};
+
+export const REASON_LABEL: Record<GameOutcome["reason"], string> = {
+  both_special_roles_eliminated: "special roles eliminated",
+  reached_final_two: "reached final two",
+  final_guess_correct: "correctly guessed the word",
+};
+
+export const ROLE_STYLE: Record<Role, { label: string; className: string }> = {
+  civilian: { label: "civilian", className: "text-blue-400 bg-blue-400/10" },
+  impostor: { label: "impostor", className: "text-red-400 bg-red-400/10" },
+  mr_white: { label: "mr white", className: "text-white/70 bg-white/5" },
+};
 
 export function deriveActiveSeat(state: GameState): SeatNumber | null {
   const alive = orderedAliveSeats(state);

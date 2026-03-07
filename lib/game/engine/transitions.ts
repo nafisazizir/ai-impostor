@@ -11,10 +11,9 @@ import {
 import {
   assertActorTurn,
   cloneRoundMap,
+  defaultNow,
   orderedAliveSeats,
 } from "@/lib/game/engine/utils";
-
-const defaultNow: TimestampFactory = () => new Date().toISOString();
 
 export function submitClue(state: GameState, input: ClueSubmission, now?: TimestampFactory): GameState {
   assertPhase(state, ["clue"]);

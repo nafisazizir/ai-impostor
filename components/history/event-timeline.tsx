@@ -6,12 +6,7 @@ import type { GameEvent } from "@/lib/game/state";
 import type { SeatNumber } from "@/lib/game/types";
 import { playerLogo, playerName } from "@/lib/game/players";
 import { cn } from "@/lib/utils";
-
-const WINNER_LABEL: Record<string, string> = {
-  civilians: "Civilians Win",
-  impostor: "Impostor Wins",
-  mr_white: "Mr. White Wins",
-};
+import { WINNER_LABEL } from "@/lib/game/ui-helpers";
 
 function PlayerTag({ seat }: { seat: SeatNumber }) {
   return (

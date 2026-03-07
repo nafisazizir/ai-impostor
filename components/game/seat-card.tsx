@@ -3,12 +3,7 @@ import { playerLogo, playerName } from "@/lib/game/players";
 import type { Role, SeatNumber } from "@/lib/game/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-
-export const ROLE_BADGE: Record<Role, { label: string; className: string }> = {
-  civilian: { label: "civilian", className: "text-blue-400 bg-blue-400/10" },
-  impostor: { label: "impostor", className: "text-red-400 bg-red-400/10" },
-  mr_white: { label: "mr white", className: "text-white/70 bg-white/5" },
-};
+import { ROLE_STYLE } from "@/lib/game/ui-helpers";
 
 export function SeatCard({
   seat,
@@ -76,20 +71,16 @@ export function SeatCard({
         </span>
       )}
 
-      {isRevealed &&
-        (() => {
-          const badge = ROLE_BADGE[role];
-          return (
-            <span
-              className={cn(
-                "rounded-sm px-2 py-0.5 font-mono text-xs",
-                badge.className,
-              )}
-            >
-              {badge.label}
-            </span>
-          );
-        })()}
+      {isRevealed && (
+        <span
+          className={cn(
+            "rounded-sm px-2 py-0.5 font-mono text-xs",
+            ROLE_STYLE[role].className,
+          )}
+        >
+          {ROLE_STYLE[role].label}
+        </span>
+      )}
     </div>
   );
 }

@@ -7,11 +7,8 @@ import {
   type VoteTally,
 } from "@/lib/game/types";
 
-import type { TimestampFactory } from "@/lib/game/engine/types";
-import { ALL_SEATS } from "@/lib/game/engine/types";
-import { orderedAliveSeats } from "@/lib/game/engine/utils";
-
-const defaultNow: TimestampFactory = () => new Date().toISOString();
+import { ALL_SEATS, type TimestampFactory } from "@/lib/game/engine/types";
+import { defaultNow, orderedAliveSeats } from "@/lib/game/engine/utils";
 
 export function resolveRound(state: GameState, now?: TimestampFactory): {
   state: GameState;

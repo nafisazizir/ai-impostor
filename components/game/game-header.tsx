@@ -3,28 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { GameState } from "@/lib/game/state";
-import type { GameOutcome, GamePhase } from "@/lib/game/types";
-
-const PHASE_LABEL: Record<GamePhase, string> = {
-  setup: "Setup",
-  clue: "Clue",
-  discussion: "Discussion",
-  vote: "Vote",
-  elimination: "Elimination",
-  finished: "Finished",
-};
-
-const WINNER_LABEL: Record<string, string> = {
-  civilians: "Civilians Win",
-  impostor: "Impostor Wins",
-  mr_white: "Mr. White Wins",
-};
-
-const REASON_LABEL: Record<GameOutcome["reason"], string> = {
-  both_special_roles_eliminated: "special roles eliminated",
-  reached_final_two: "reached final two",
-  final_guess_correct: "correctly guessed the word",
-};
+import { PHASE_LABEL, WINNER_LABEL, REASON_LABEL } from "@/lib/game/ui-helpers";
 
 function PhaseLabel({ state }: { state: GameState }) {
   const phase = state.currentPhase;

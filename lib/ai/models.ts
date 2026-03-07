@@ -13,10 +13,6 @@ export function playerProviderOptions(seat: SeatNumber) {
   return PLAYERS[seat].providerOptions;
 }
 
-export function playerModelId(seat: SeatNumber): string {
-  return PLAYERS[seat].model;
-}
-
 export function hostModel() {
   return HOST_MODEL;
 }

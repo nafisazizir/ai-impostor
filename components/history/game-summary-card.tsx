@@ -1,16 +1,18 @@
 "use client";
 
 import type { GameSummary } from "@/lib/game/persisted";
+import type { GameOutcome } from "@/lib/game/types";
 import {
   formatDuration,
   formatLocalDateTime,
 } from "@/lib/history/format";
 import { cn } from "@/lib/utils";
+import { ROLE_STYLE } from "@/lib/game/ui-helpers";
 
-const WINNER_BADGE: Record<string, { label: string; className: string }> = {
-  civilians: { label: "civilian", className: "text-blue-400 bg-blue-400/10" },
-  impostor: { label: "impostor", className: "text-red-400 bg-red-400/10" },
-  mr_white: { label: "mr white", className: "text-white/70 bg-white/5" },
+const WINNER_TO_ROLE: Record<GameOutcome["winner"], keyof typeof ROLE_STYLE> = {
+  civilians: "civilian",
+  impostor: "impostor",
+  mr_white: "mr_white",
 };
 
 export function GameSummaryCard({
@@ -22,7 +24,7 @@ export function GameSummaryCard({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const badge = WINNER_BADGE[summary.outcome.winner];
+  const badge = ROLE_STYLE[WINNER_TO_ROLE[summary.outcome.winner]];
 
   return (
     <button

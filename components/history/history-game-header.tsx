@@ -1,20 +1,8 @@
 "use client";
 
 import type { GameSummary } from "@/lib/game/persisted";
-import type { GameOutcome } from "@/lib/game/types";
 import { formatDuration } from "@/lib/history/format";
-
-const WINNER_LABEL: Record<string, string> = {
-  civilians: "Civilians Win",
-  impostor: "Impostor Wins",
-  mr_white: "Mr. White Wins",
-};
-
-const REASON_LABEL: Record<GameOutcome["reason"], string> = {
-  both_special_roles_eliminated: "special roles eliminated",
-  reached_final_two: "reached final two",
-  final_guess_correct: "correctly guessed the word",
-};
+import { WINNER_LABEL, REASON_LABEL } from "@/lib/game/ui-helpers";
 
 export function HistoryGameHeader({ summary }: { summary: GameSummary }) {
   return (

@@ -9,13 +9,7 @@ import type {
 } from "@/hooks/use-game-stream";
 import { playerLogo, playerName } from "@/lib/game/players";
 import { cn } from "@/lib/utils";
-
-const PHASE_LABEL: Record<string, string> = {
-  clue: "Clue",
-  discussion: "Discussion",
-  vote: "Vote",
-  elimination: "Elimination",
-};
+import { PHASE_LABEL } from "@/lib/game/ui-helpers";
 
 const ANSWER_PREFIX: Record<string, string> = {
   clue: 'Gave clue: "',
@@ -158,10 +152,7 @@ function StreamingEntry({
         </span>
       </div>
       <p
-        className={cn(
-          "text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap",
-          thinking.isStreaming,
-        )}
+        className="text-muted-foreground/60 font-mono text-xs leading-tight whitespace-pre-wrap"
       >
         {thinking.text}
       </p>

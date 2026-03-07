@@ -1,7 +1,9 @@
 import type { GameState } from "@/lib/game/state";
 import type { RolesBySeat, SeatNumber } from "@/lib/game/types";
 
-import type { Rng } from "@/lib/game/engine/types";
+import type { Rng, TimestampFactory } from "@/lib/game/engine/types";
+
+export const defaultNow: TimestampFactory = () => new Date().toISOString();
 
 export function orderedAliveSeats(state: GameState): SeatNumber[] {
   return state.seatOrder.filter((seat) => state.aliveSeats.includes(seat));

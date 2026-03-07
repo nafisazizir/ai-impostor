@@ -15,7 +15,6 @@ import {
 } from "@/lib/ai/schemas";
 import {
   playerModel,
-  playerModelId,
   playerProviderOptions,
   hostModel,
 } from "@/lib/ai/models";
@@ -182,7 +181,7 @@ export async function streamClue(
   const { output, reasoningText } = await resolveOutput(
     result,
     ClueSchema,
-    playerModelId(player),
+    playerName(player),
   );
 
   return {
@@ -216,7 +215,7 @@ export async function streamDiscussionMessage(
   const { output, reasoningText } = await resolveOutput(
     result,
     DiscussionSchema,
-    playerModelId(player),
+    playerName(player),
   );
 
   return {
@@ -238,7 +237,7 @@ export async function streamVote(
   const validTargetNames = validTargets.map((seat) => playerName(seat));
 
   const voteSchema = createVoteSchema(validTargetNames);
-  const label = playerModelId(player);
+  const label = playerName(player);
 
   for (let attempt = 0; attempt < MAX_SEMANTIC_RETRIES; attempt++) {
     const result = streamText({
@@ -311,7 +310,7 @@ export async function streamMrWhiteGuess(
   const { output, reasoningText } = await resolveOutput(
     result,
     MrWhiteGuessSchema,
-    playerModelId(player),
+    playerName(player),
   );
 
   return {
