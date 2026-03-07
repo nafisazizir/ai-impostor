@@ -1,5 +1,10 @@
 import type { ComponentType } from "react";
 import type { JSONValue } from "ai";
+import type { OpenAILanguageModelResponsesOptions } from "@ai-sdk/openai";
+import type { AnthropicLanguageModelOptions } from "@ai-sdk/anthropic";
+import type { GoogleLanguageModelOptions } from "@ai-sdk/google";
+import type { XaiLanguageModelResponsesOptions } from "@ai-sdk/xai";
+import type { DeepSeekLanguageModelOptions } from "@ai-sdk/deepseek";
 import type { SeatNumber } from "@/lib/game/types";
 import type { IconProps } from "@/components/icons/player-icons";
 import {
@@ -8,6 +13,8 @@ import {
   MetaIcon,
   MistralIcon,
   XAIIcon,
+  AnthropicIcon,
+  DeepSeekIcon,
 } from "@/components/icons/player-icons";
 
 type PlayerConfig = {
@@ -64,6 +71,77 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
     logo: XAIIcon,
     gatewayId: "xai/grok-4.1-fast-non-reasoning",
     providerOptions: {},
+  },
+};
+
+/** DO NOT DELETE
+ * Original expensive reasoning/thinking models (archived for reference). */
+export const ARCHIVED_PLAYERS: Record<SeatNumber, PlayerConfig> = {
+  1: {
+    provider: "openai",
+    model: "gpt-5-mini",
+    logo: OpenAIIcon,
+    gatewayId: "openai/gpt-5-mini",
+    providerOptions: {
+      openai: {
+        reasoningEffort: "low",
+        reasoningSummary: "auto",
+      } satisfies OpenAILanguageModelResponsesOptions,
+    },
+  },
+  2: {
+    provider: "anthropic",
+    model: "claude-sonnet-4.6",
+    logo: AnthropicIcon,
+    gatewayId: "anthropic/claude-sonnet-4.6",
+    providerOptions: {
+      anthropic: {
+        thinking: { type: "enabled", budgetTokens: 4000 },
+      } satisfies AnthropicLanguageModelOptions,
+    },
+  },
+  3: {
+    provider: "google",
+    model: "gemini-2.5-flash",
+    logo: GoogleIcon,
+    gatewayId: "google/gemini-2.5-flash",
+    providerOptions: {
+      google: {
+        thinkingConfig: { thinkingBudget: 4000, includeThoughts: true },
+      } satisfies GoogleLanguageModelOptions,
+    },
+  },
+  4: {
+    provider: "xai",
+    model: "grok-4-fast-reasoning",
+    logo: XAIIcon,
+    gatewayId: "xai/grok-4-fast-reasoning",
+    providerOptions: {
+      xai: {} satisfies XaiLanguageModelResponsesOptions,
+    },
+  },
+  5: {
+    provider: "deepseek",
+    model: "deepseek-v3.2-thinking",
+    logo: DeepSeekIcon,
+    gatewayId: "deepseek/deepseek-v3.2-thinking",
+    providerOptions: {
+      deepseek: {
+        thinking: { type: "enabled" },
+      } satisfies DeepSeekLanguageModelOptions,
+    },
+  },
+  6: {
+    provider: "openai",
+    model: "gpt-5.1-codex-mini",
+    logo: OpenAIIcon,
+    gatewayId: "openai/gpt-5.1-codex-mini",
+    providerOptions: {
+      openai: {
+        reasoningEffort: "low",
+        reasoningSummary: "auto",
+      } satisfies OpenAILanguageModelResponsesOptions,
+    },
   },
 };
 

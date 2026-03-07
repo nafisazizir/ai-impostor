@@ -27,10 +27,14 @@ import {
   voteUserPrompt,
   mrWhiteGuessUserPrompt,
 } from "@/lib/ai/prompts";
+import type { CallUsage } from "@/lib/ai/usage";
+import { emptyCallUsage, addCallUsage } from "@/lib/ai/usage";
+
 export type ActionResult<T> = {
   output: T;
   reasoning: string;
   actionSummary: string;
+  usage: CallUsage;
 };
 
 type OnReasoningDelta = (text: string) => void;
@@ -91,11 +95,26 @@ function extractJsonFromText(text: string): unknown | null {
  * No silent fallbacks — fails with rich diagnostics so we can see exactly
  * what the model returned when structured output doesn't work.
  */
+async function resolveUsage(
+  result: ReturnType<typeof streamText>,
+): Promise<CallUsage> {
+  try {
+    const u = await result.usage;
+    return {
+      inputTokens: u.inputTokens ?? 0,
+      outputTokens: u.outputTokens ?? 0,
+      totalTokens: u.totalTokens ?? 0,
+    };
+  } catch {
+    return emptyCallUsage();
+  }
+}
+
 async function resolveOutput<T>(
   result: ReturnType<typeof streamText>,
   schema: z.ZodType<T>,
   label: string,
-): Promise<{ output: T; reasoningText: string }> {
+): Promise<{ output: T; reasoningText: string; usage: CallUsage }> {
   let output: T | undefined;
 
   try {
@@ -107,9 +126,10 @@ async function resolveOutput<T>(
   }
 
   const reasoningText = (await result.reasoningText) ?? "";
+  const usage = await resolveUsage(result);
 
   if (output !== undefined) {
-    return { output, reasoningText };
+    return { output, reasoningText, usage };
   }
 
   // Diagnostics: inspect raw text to understand what the model actually returned
@@ -144,7 +164,7 @@ export async function streamWordPair(
 
   await drainStream(result, { onReasoningDelta });
 
-  const { output, reasoningText } = await resolveOutput(
+  const { output, reasoningText, usage } = await resolveOutput(
     result,
     WordPairSchema,
     "host",
@@ -154,6 +174,7 @@ export async function streamWordPair(
     output,
     reasoning: reasoningText,
     actionSummary: `Generated word pair: "${output.civilianWord}" / "${output.impostorWord}"`,
+    usage,
   };
 }
 
@@ -178,7 +199,7 @@ export async function streamClue(
     answerField: "clue",
   });
 
-  const { output, reasoningText } = await resolveOutput(
+  const { output, reasoningText, usage } = await resolveOutput(
     result,
     ClueSchema,
     playerName(player),
@@ -188,6 +209,7 @@ export async function streamClue(
     output,
     reasoning: reasoningText,
     actionSummary: `Gave clue: "${output.clue}"`,
+    usage,
   };
 }
 
@@ -212,7 +234,7 @@ export async function streamDiscussionMessage(
     answerField: "message",
   });
 
-  const { output, reasoningText } = await resolveOutput(
+  const { output, reasoningText, usage } = await resolveOutput(
     result,
     DiscussionSchema,
     playerName(player),
@@ -222,6 +244,7 @@ export async function streamDiscussionMessage(
     output,
     reasoning: reasoningText,
     actionSummary: `Said: "${output.message}"`,
+    usage,
   };
 }
 
@@ -238,6 +261,7 @@ export async function streamVote(
 
   const voteSchema = createVoteSchema(validTargetNames);
   const label = playerName(player);
+  let accUsage = emptyCallUsage();
 
   for (let attempt = 0; attempt < MAX_SEMANTIC_RETRIES; attempt++) {
     const result = streamText({
@@ -251,11 +275,12 @@ export async function streamVote(
 
     await drainStream(result, { onReasoningDelta });
 
-    const { output, reasoningText } = await resolveOutput(
+    const { output, reasoningText, usage } = await resolveOutput(
       result,
       voteSchema,
       label,
     );
+    accUsage = addCallUsage(accUsage, usage);
 
     const targetName = output.targetPlayer;
     if (validTargetNames.includes(targetName)) {
@@ -264,6 +289,7 @@ export async function streamVote(
         output: { targetPlayer: targetSeat },
         reasoning: reasoningText,
         actionSummary: `Voted for ${targetName}`,
+        usage: accUsage,
       };
     }
 
@@ -283,6 +309,7 @@ export async function streamVote(
     output: { targetPlayer: fallbackTarget },
     reasoning: "(fallback: model returned invalid targets after retries)",
     actionSummary: `Voted for ${playerName(fallbackTarget)} (fallback)`,
+    usage: accUsage,
   };
 }
 
@@ -307,7 +334,7 @@ export async function streamMrWhiteGuess(
     answerField: "guess",
   });
 
-  const { output, reasoningText } = await resolveOutput(
+  const { output, reasoningText, usage } = await resolveOutput(
     result,
     MrWhiteGuessSchema,
     playerName(player),
@@ -317,5 +344,6 @@ export async function streamMrWhiteGuess(
     output,
     reasoning: reasoningText,
     actionSummary: `Guessed: "${output.guess}"`,
+    usage,
   };
 }

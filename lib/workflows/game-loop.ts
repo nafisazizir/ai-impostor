@@ -13,7 +13,7 @@ import {
   applyElimination,
   resolveMrWhiteGuess,
 } from "@/lib/game/engine";
-import { playerName } from "@/lib/game/players";
+import { playerName, PLAYERS } from "@/lib/game/players";
 import { getEnv } from "@/lib/config/env";
 import {
   streamWordPair,
@@ -23,6 +23,14 @@ import {
   streamMrWhiteGuess,
 } from "@/lib/ai/actions";
 import type { ActionResult } from "@/lib/ai/actions";
+import type { GameTokenUsage } from "@/lib/ai/usage";
+import {
+  emptyCallUsage,
+  emptyGameTokenUsage,
+  accumulateUsage,
+  mergeGameUsage,
+} from "@/lib/ai/usage";
+import { estimateCost } from "@/lib/ai/pricing";
 import {
   setGameStartIndex,
   persistGame,
@@ -43,6 +51,7 @@ type PhaseResult = {
   newThinking: ThinkingEntry[];
   nextSnapshotIndex: number;
   eventsWritten: number;
+  usageDelta: GameTokenUsage;
 };
 
 type ResolutionResult = PhaseResult & {
@@ -148,6 +157,7 @@ async function withStreamedAction<T>(
       output: fallbackOutput,
       reasoning: `(fallback: AI generation failed)`,
       actionSummary: `${label} failed — used fallback`,
+      usage: emptyCallUsage(),
     };
   }
 }
@@ -191,13 +201,18 @@ async function gameIdStep() {
   return `game-${Date.now()}`;
 }
 
-async function wordPairStep(): Promise<{ wordPair: WordPair }> {
+async function wordPairStep(): Promise<{ wordPair: WordPair; usageDelta: GameTokenUsage }> {
   "use step";
   const result = await streamWordPair();
   console.log(
     `[workflow] Word pair: "${result.output.civilianWord}" / "${result.output.impostorWord}"`,
   );
-  return { wordPair: result.output };
+  const usageDelta = accumulateUsage(
+    emptyGameTokenUsage(),
+    "openai/gpt-4.1-mini",
+    result.usage,
+  );
+  return { wordPair: result.output, usageDelta };
 }
 
 async function setupStep(
@@ -239,6 +254,7 @@ async function cluePhaseStep(
   const allThinking = [...priorThinking];
   const newThinking: ThinkingEntry[] = [];
   const aliveSeats = orderedAliveSeats(currentState);
+  let phaseUsage = emptyGameTokenUsage();
 
   console.log(`[${currentState.gameId}] Clue phase (${aliveSeats.length} players)`);
 
@@ -265,6 +281,7 @@ async function cluePhaseStep(
       );
 
       emit({ kind: "thinking:end", actionSummary: result.actionSummary });
+      phaseUsage = accumulateUsage(phaseUsage, PLAYERS[seat].gatewayId, result.usage);
 
       const entry = buildThinkingEntry(seat, currentState, result);
       newThinking.push(entry);
@@ -286,7 +303,7 @@ async function cluePhaseStep(
     }
   });
 
-  return { state: currentState, newThinking, nextSnapshotIndex: idx, eventsWritten };
+  return { state: currentState, newThinking, nextSnapshotIndex: idx, eventsWritten, usageDelta: phaseUsage };
 }
 
 async function discussionPhaseStep(
@@ -303,6 +320,7 @@ async function discussionPhaseStep(
   const allThinking = [...priorThinking];
   const newThinking: ThinkingEntry[] = [];
   const aliveSeats = orderedAliveSeats(currentState);
+  let phaseUsage = emptyGameTokenUsage();
 
   console.log(
     `[${currentState.gameId}] Discussion pass ${pass} (${aliveSeats.length} players)`,
@@ -333,6 +351,7 @@ async function discussionPhaseStep(
       );
 
       emit({ kind: "thinking:end", actionSummary: result.actionSummary });
+      phaseUsage = accumulateUsage(phaseUsage, PLAYERS[seat].gatewayId, result.usage);
 
       const entry = buildThinkingEntry(seat, currentState, result, pass);
       newThinking.push(entry);
@@ -360,7 +379,7 @@ async function discussionPhaseStep(
     }
   });
 
-  return { state: currentState, newThinking, nextSnapshotIndex: idx, eventsWritten };
+  return { state: currentState, newThinking, nextSnapshotIndex: idx, eventsWritten, usageDelta: phaseUsage };
 }
 
 async function votePhaseStep(
@@ -375,6 +394,7 @@ async function votePhaseStep(
   const allThinking = [...priorThinking];
   const newThinking: ThinkingEntry[] = [];
   const aliveSeats = orderedAliveSeats(currentState);
+  let phaseUsage = emptyGameTokenUsage();
 
   console.log(`[${currentState.gameId}] Vote phase (${aliveSeats.length} players)`);
 
@@ -407,10 +427,12 @@ async function votePhaseStep(
           output: { targetPlayer: fallbackTarget },
           reasoning: "(fallback: AI generation failed)",
           actionSummary: "Vote failed — used random fallback",
+          usage: emptyCallUsage(),
         };
       }
 
       emit({ kind: "thinking:end", actionSummary: result.actionSummary });
+      phaseUsage = accumulateUsage(phaseUsage, PLAYERS[seat].gatewayId, result.usage);
 
       const entry = buildThinkingEntry(seat, currentState, result);
       newThinking.push(entry);
@@ -437,7 +459,7 @@ async function votePhaseStep(
     }
   });
 
-  return { state: currentState, newThinking, nextSnapshotIndex: idx, eventsWritten };
+  return { state: currentState, newThinking, nextSnapshotIndex: idx, eventsWritten, usageDelta: phaseUsage };
 }
 
 async function resolutionStep(
@@ -475,6 +497,7 @@ async function resolutionStep(
       newThinking: [],
       nextSnapshotIndex: idx,
       eventsWritten,
+      usageDelta: emptyGameTokenUsage(),
       needsMrWhiteGuess: false,
       eliminatedSeat: null,
     };
@@ -509,6 +532,7 @@ async function resolutionStep(
     newThinking: [],
     nextSnapshotIndex: idx,
     eventsWritten,
+    usageDelta: emptyGameTokenUsage(),
     needsMrWhiteGuess,
     eliminatedSeat: needsMrWhiteGuess ? eliminatedSeat : null,
   };
@@ -527,6 +551,7 @@ async function mrWhiteGuessStep(
   const allThinking = [...priorThinking];
   const newThinking: ThinkingEntry[] = [];
   const prevLen = allThinking.length;
+  let phaseUsage = emptyGameTokenUsage();
 
   console.log(`[${currentState.gameId}] Mr. White gets a final guess...`);
 
@@ -550,6 +575,7 @@ async function mrWhiteGuessStep(
     );
 
     emit({ kind: "thinking:end", actionSummary: result.actionSummary });
+    phaseUsage = accumulateUsage(phaseUsage, PLAYERS[seat].gatewayId, result.usage);
 
     const entry = buildThinkingEntry(seat, currentState, result);
     newThinking.push(entry);
@@ -573,7 +599,7 @@ async function mrWhiteGuessStep(
     });
   });
 
-  return { state: currentState, newThinking, nextSnapshotIndex: idx, eventsWritten };
+  return { state: currentState, newThinking, nextSnapshotIndex: idx, eventsWritten, usageDelta: phaseUsage };
 }
 
 async function emitGameOverSnapshotStep(
@@ -612,11 +638,18 @@ async function emitFinishedStep(): Promise<{ eventsWritten: number }> {
 async function persistGameStep(
   state: GameState,
   thinking: ThinkingEntry[],
+  gameUsage?: GameTokenUsage,
 ): Promise<void> {
   "use step";
-  const game = buildPersistedGame(state, thinking);
+  const game = buildPersistedGame(state, thinking, gameUsage);
   await persistGame(game);
-  console.log(`[${state.gameId}] Persisted to Redis (${game.summary.durationMs}ms game)`);
+  const costStr = game.summary.costEstimate
+    ? ` · $${game.summary.costEstimate.totalUsd.toFixed(4)}`
+    : "";
+  const tokenStr = game.summary.tokenUsage
+    ? ` · ${game.summary.tokenUsage.total.totalTokens} tokens (${game.summary.tokenUsage.callCount} calls)`
+    : "";
+  console.log(`[${state.gameId}] Persisted to Redis (${game.summary.durationMs}ms game${tokenStr}${costStr})`);
 }
 
 // ─── Main workflow ───────────────────────────────────────────────────────────
@@ -649,7 +682,9 @@ export async function gameLoopWorkflow() {
     const gameId = await gameIdStep();
 
     // 1. Generate word pair
-    const { wordPair } = await wordPairStep();
+    const wpResult = await wordPairStep();
+    const { wordPair } = wpResult;
+    let gameUsage = wpResult.usageDelta;
 
     // 2. Mark game as live + setup
     await setLiveGameStep(gameId);
@@ -670,6 +705,7 @@ export async function gameLoopWorkflow() {
       thinking = [...thinking, ...clue.newThinking];
       snapshotIndex = clue.nextSnapshotIndex;
       streamOffset += clue.eventsWritten;
+      gameUsage = mergeGameUsage(gameUsage, clue.usageDelta);
 
       // --- Discussion phase (multiple passes) ---
       for (let pass = 1; pass <= config.maxDiscussionPasses; pass++) {
@@ -684,6 +720,7 @@ export async function gameLoopWorkflow() {
         thinking = [...thinking, ...disc.newThinking];
         snapshotIndex = disc.nextSnapshotIndex;
         streamOffset += disc.eventsWritten;
+        gameUsage = mergeGameUsage(gameUsage, disc.usageDelta);
       }
 
       // --- Vote phase ---
@@ -692,6 +729,7 @@ export async function gameLoopWorkflow() {
       thinking = [...thinking, ...vote.newThinking];
       snapshotIndex = vote.nextSnapshotIndex;
       streamOffset += vote.eventsWritten;
+      gameUsage = mergeGameUsage(gameUsage, vote.usageDelta);
 
       // --- Resolution ---
       const res = await resolutionStep(state, thinking, snapshotIndex);
@@ -712,6 +750,7 @@ export async function gameLoopWorkflow() {
         thinking = [...thinking, ...mrw.newThinking];
         snapshotIndex = mrw.nextSnapshotIndex;
         streamOffset += mrw.eventsWritten;
+        gameUsage = mergeGameUsage(gameUsage, mrw.usageDelta);
       }
 
       if (state.currentPhase === "finished") break;
@@ -724,15 +763,16 @@ export async function gameLoopWorkflow() {
       );
     }
 
+    const cost = estimateCost(gameUsage.byModel);
     console.log(
-      `[${gameId}] Game finished. Outcome: ${JSON.stringify(state.outcome)}`,
+      `[${gameId}] Game finished. Outcome: ${JSON.stringify(state.outcome)} · ${gameUsage.total.totalTokens} tokens · $${cost.totalUsd.toFixed(4)}`,
     );
 
     const over = await emitGameOverSnapshotStep(state, thinking, snapshotIndex);
     streamOffset += over.eventsWritten;
 
     if (state.outcome) {
-      await persistGameStep(state, thinking);
+      await persistGameStep(state, thinking, gameUsage);
     }
 
     await clearLiveGameStep();
