@@ -1,3 +1,5 @@
+import type { PlayerLineup } from "@/lib/game/players";
+
 type RequiredEnvKey =
   | "AI_GATEWAY_API_KEY"
   | "UPSTASH_REDIS_REST_URL"
@@ -15,6 +17,7 @@ export type AppEnv = {
   WORKFLOW_MAX_DISCUSSION_PASSES: number;
   WORKFLOW_GAME_DELAY_MS: number;
   GAME_MODE: GameMode;
+  PLAYER_LINEUP: PlayerLineup;
   REPLAY_BUFFER_TARGET: number;
 };
 
@@ -22,8 +25,10 @@ const DEFAULT_WORKFLOW_LOOP_ID = "ai-impostor-main-loop";
 const DEFAULT_MAX_DISCUSSION_PASSES = 1;
 const DEFAULT_GAME_DELAY_MS = 0;
 const DEFAULT_GAME_MODE: GameMode = "seed";
+const DEFAULT_PLAYER_LINEUP: PlayerLineup = "budget";
 const DEFAULT_REPLAY_BUFFER_TARGET = 20;
 const VALID_GAME_MODES: readonly GameMode[] = ["seed", "on-demand"];
+const VALID_PLAYER_LINEUPS: readonly PlayerLineup[] = ["budget", "reasoning"];
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) {
@@ -84,6 +89,13 @@ export function getEnv(): AppEnv {
     );
   }
 
+  const playerLineup = (process.env.PLAYER_LINEUP ?? DEFAULT_PLAYER_LINEUP) as string;
+  if (!VALID_PLAYER_LINEUPS.includes(playerLineup as PlayerLineup)) {
+    throw new Error(
+      `Invalid PLAYER_LINEUP value "${playerLineup}". Expected one of: ${VALID_PLAYER_LINEUPS.join(", ")}.`,
+    );
+  }
+
   return {
     AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY as string,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL as string,
@@ -99,6 +111,7 @@ export function getEnv(): AppEnv {
       DEFAULT_GAME_DELAY_MS,
     ),
     GAME_MODE: gameMode as GameMode,
+    PLAYER_LINEUP: playerLineup as PlayerLineup,
     REPLAY_BUFFER_TARGET: parsePositiveInt(
       process.env.REPLAY_BUFFER_TARGET,
       DEFAULT_REPLAY_BUFFER_TARGET,

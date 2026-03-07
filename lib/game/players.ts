@@ -25,11 +25,13 @@ type PlayerConfig = {
   providerOptions: Record<string, Record<string, JSONValue | undefined>>;
 };
 
+export type PlayerLineup = "budget" | "reasoning";
+
 /**
  * Budget models for continuous/infinite gameplay (~20-50x cheaper).
  * No reasoning/thinking tokens — no hidden cost multipliers.
  */
-export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
+const BUDGET_PLAYERS: Record<SeatNumber, PlayerConfig> = {
   1: {
     provider: "openai",
     model: "gpt-5-nano",
@@ -74,9 +76,8 @@ export const PLAYERS: Record<SeatNumber, PlayerConfig> = {
   },
 };
 
-/** DO NOT DELETE
- * Original expensive reasoning/thinking models (archived for reference). */
-export const ARCHIVED_PLAYERS: Record<SeatNumber, PlayerConfig> = {
+/** Expensive reasoning/thinking models — higher quality, ~10-20x more costly. */
+const REASONING_PLAYERS: Record<SeatNumber, PlayerConfig> = {
   1: {
     provider: "openai",
     model: "gpt-5-mini",
@@ -91,9 +92,9 @@ export const ARCHIVED_PLAYERS: Record<SeatNumber, PlayerConfig> = {
   },
   2: {
     provider: "anthropic",
-    model: "claude-sonnet-4.6",
+    model: "claude-haiku-4-5",
     logo: AnthropicIcon,
-    gatewayId: "anthropic/claude-sonnet-4.6",
+    gatewayId: "anthropic/claude-haiku-4-5",
     providerOptions: {
       anthropic: {
         thinking: { type: "enabled", budgetTokens: 4000 },
@@ -102,9 +103,9 @@ export const ARCHIVED_PLAYERS: Record<SeatNumber, PlayerConfig> = {
   },
   3: {
     provider: "google",
-    model: "gemini-2.5-flash",
+    model: "gemini-3-flash",
     logo: GoogleIcon,
-    gatewayId: "google/gemini-2.5-flash",
+    gatewayId: "google/gemini-3-flash",
     providerOptions: {
       google: {
         thinkingConfig: { thinkingBudget: 4000, includeThoughts: true },
@@ -113,9 +114,9 @@ export const ARCHIVED_PLAYERS: Record<SeatNumber, PlayerConfig> = {
   },
   4: {
     provider: "xai",
-    model: "grok-4-fast-reasoning",
+    model: "grok-4.1-fast-reasoning",
     logo: XAIIcon,
-    gatewayId: "xai/grok-4-fast-reasoning",
+    gatewayId: "xai/grok-4.1-fast-reasoning",
     providerOptions: {
       xai: {} satisfies XaiLanguageModelResponsesOptions,
     },
@@ -132,18 +133,21 @@ export const ARCHIVED_PLAYERS: Record<SeatNumber, PlayerConfig> = {
     },
   },
   6: {
-    provider: "openai",
-    model: "gpt-5.1-codex-mini",
-    logo: OpenAIIcon,
-    gatewayId: "openai/gpt-5.1-codex-mini",
-    providerOptions: {
-      openai: {
-        reasoningEffort: "low",
-        reasoningSummary: "auto",
-      } satisfies OpenAILanguageModelResponsesOptions,
-    },
+    provider: "meta",
+    model: "llama-4-maverick",
+    logo: MetaIcon,
+    gatewayId: "meta/llama-4-maverick",
+    providerOptions: {},
   },
 };
+
+const lineup: PlayerLineup =
+  (process.env.PLAYER_LINEUP as PlayerLineup | undefined) === "reasoning"
+    ? "reasoning"
+    : "budget";
+
+export const PLAYERS: Record<SeatNumber, PlayerConfig> =
+  lineup === "reasoning" ? REASONING_PLAYERS : BUDGET_PLAYERS;
 
 export function playerName(seat: SeatNumber): string {
   return PLAYERS[seat].model;

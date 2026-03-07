@@ -24,11 +24,11 @@ const PRICING: Record<string, ModelPricing> = {
   "xai/grok-4.1-fast-non-reasoning": { inputPer1M: 0.2, outputPer1M: 0.5 },
   // Archived reasoning models
   "openai/gpt-5-mini": { inputPer1M: 0.25, outputPer1M: 2.0 },
-  "anthropic/claude-sonnet-4.6": { inputPer1M: 3.0, outputPer1M: 15.0 },
-  "google/gemini-2.5-flash": { inputPer1M: 0.3, outputPer1M: 2.5 },
-  "xai/grok-4-fast-reasoning": { inputPer1M: 0.2, outputPer1M: 0.5 },
+  "anthropic/claude-haiku-4-5": { inputPer1M: 1.0, outputPer1M: 5.0 },
+  "google/gemini-3-flash": { inputPer1M: 0.5, outputPer1M: 3.0 },
+  "xai/grok-4.1-fast-reasoning": { inputPer1M: 0.2, outputPer1M: 0.5 },
   "deepseek/deepseek-v3.2-thinking": { inputPer1M: 0.28, outputPer1M: 0.42 },
-  "openai/gpt-5.1-codex-mini": { inputPer1M: 0.25, outputPer1M: 2.0 },
+  "meta/llama-4-maverick": { inputPer1M: 0.24, outputPer1M: 0.97 },
 };
 
 const DEFAULT_PRICING: ModelPricing = { inputPer1M: 0.5, outputPer1M: 1.5 };
