@@ -9,6 +9,7 @@ import type {
   GameStreamStatus,
   StreamingThinking,
   StreamingAnswer,
+  StreamMode,
 } from "@/hooks/use-game-stream";
 import { deriveActiveSeat } from "@/lib/game/ui-helpers";
 import { useGameStream } from "@/hooks/use-game-stream";
@@ -29,6 +30,7 @@ export function GameSpectator() {
     error,
     streamingThinking,
     streamingAnswer,
+    mode,
     reconnect,
   } = useGameStream();
 
@@ -48,6 +50,7 @@ export function GameSpectator() {
       streamingAnswer={streamingAnswer}
       status={shellStatus}
       error={error}
+      mode={mode}
       onAction={reconnect}
     />
   );
@@ -75,6 +78,7 @@ type SpectatorShellProps = {
   streamingAnswer?: StreamingAnswer | null;
   status: "connecting" | "error" | "playing" | "finished" | "between-games";
   error?: string | null;
+  mode?: StreamMode;
   onAction: () => void;
 };
 
@@ -86,6 +90,7 @@ function SpectatorShell({
   streamingAnswer,
   status,
   error,
+  mode,
   onAction,
 }: SpectatorShellProps) {
   const [panelOpen, setPanelOpen] = useState(true);
@@ -151,7 +156,15 @@ function SpectatorShell({
           )}
         </main>
 
-        <footer className="text-muted-foreground/50 flex flex-row items-center justify-end gap-4 p-2 font-mono text-xs tracking-tight">
+        <footer className="text-muted-foreground/50 flex flex-row items-center justify-between gap-4 p-2 font-mono text-xs tracking-tight">
+          <div className="px-2">
+            {mode === "replay" && (
+              <span className="text-muted-foreground/70 uppercase tracking-widest">
+                replay
+              </span>
+            )}
+          </div>
+          <div className="flex flex-row items-center gap-4">
           <Link
             href="/history"
             className="hover:text-muted-foreground px-2 py-2 transition-colors duration-200"
@@ -166,6 +179,7 @@ function SpectatorShell({
           >
             @nafisazizir
           </a>
+          </div>
         </footer>
       </div>
 

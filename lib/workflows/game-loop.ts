@@ -23,7 +23,14 @@ import {
   streamMrWhiteGuess,
 } from "@/lib/ai/actions";
 import type { ActionResult } from "@/lib/ai/actions";
-import { setGameStartIndex, persistGame } from "@/lib/storage/redis";
+import {
+  setGameStartIndex,
+  persistGame,
+  getGameCount,
+  getSpectatorCount,
+  setLiveGameId,
+  clearLiveGameId,
+} from "@/lib/storage/redis";
 import { buildPersistedGame } from "@/lib/game/persisted";
 import type { GameStreamEvent } from "@/lib/workflows/types";
 
@@ -153,7 +160,30 @@ async function configStep() {
   return {
     maxDiscussionPasses: env.WORKFLOW_MAX_DISCUSSION_PASSES,
     delayMs: env.WORKFLOW_GAME_DELAY_MS,
+    gameMode: env.GAME_MODE,
+    bufferTarget: env.REPLAY_BUFFER_TARGET,
   };
+}
+
+async function bufferCheckStep(): Promise<number> {
+  "use step";
+  return getGameCount();
+}
+
+async function spectatorCheckStep(): Promise<boolean> {
+  "use step";
+  const count = await getSpectatorCount();
+  return count > 0;
+}
+
+async function setLiveGameStep(gameId: string): Promise<void> {
+  "use step";
+  await setLiveGameId(gameId);
+}
+
+async function clearLiveGameStep(): Promise<void> {
+  "use step";
+  await clearLiveGameId();
 }
 
 async function gameIdStep() {
@@ -598,12 +628,31 @@ export async function gameLoopWorkflow() {
   let streamOffset = 0;
 
   while (true) {
+    // Seed mode: stop when buffer is full
+    if (config.gameMode === "seed") {
+      const count = await bufferCheckStep();
+      if (count >= config.bufferTarget) {
+        console.log(`[workflow] Buffer full (${count}/${config.bufferTarget}). Stopping.`);
+        break;
+      }
+    }
+
+    // On-demand mode: wait for spectators
+    if (config.gameMode === "on-demand") {
+      const hasSpectators = await spectatorCheckStep();
+      if (!hasSpectators) {
+        await sleep(5000);
+        continue;
+      }
+    }
+
     const gameId = await gameIdStep();
 
     // 1. Generate word pair
     const { wordPair } = await wordPairStep();
 
-    // 2. Setup game — writes game:start + initial snapshot, stores gameStartIndex
+    // 2. Mark game as live + setup
+    await setLiveGameStep(gameId);
     const setup = await setupStep(gameId, wordPair, streamOffset);
     let state = setup.state;
     let thinking: ThinkingEntry[] = [];
@@ -685,6 +734,8 @@ export async function gameLoopWorkflow() {
     if (state.outcome) {
       await persistGameStep(state, thinking);
     }
+
+    await clearLiveGameStep();
 
     const fin = await emitFinishedStep();
     streamOffset += fin.eventsWritten;

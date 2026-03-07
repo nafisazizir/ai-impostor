@@ -29,6 +29,8 @@ export type StreamingAnswer = {
   isStreaming: boolean;
 };
 
+export type StreamMode = "live" | "replay" | null;
+
 export type GameStreamState = {
   snapshots: GameSnapshot[];
   currentIndex: number;
@@ -38,6 +40,7 @@ export type GameStreamState = {
   autoFollow: boolean;
   streamingThinking: StreamingThinking | null;
   streamingAnswer: StreamingAnswer | null;
+  mode: StreamMode;
 };
 
 export type GameStreamActions = {
@@ -59,6 +62,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
     useState<StreamingThinking | null>(null);
   const [streamingAnswer, setStreamingAnswer] =
     useState<StreamingAnswer | null>(null);
+  const [mode, setMode] = useState<StreamMode>(null);
 
   const streamingThinkingRef = useRef<StreamingThinking | null>(null);
   const streamingAnswerRef = useRef<StreamingAnswer | null>(null);
@@ -66,6 +70,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
   const snapshotsRef = useRef<GameSnapshot[]>([]);
   const gameIdRef = useRef<string | null>(null);
   const statusRef = useRef<GameStreamStatus>("connecting");
+  const modeRef = useRef<StreamMode>(null);
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -121,14 +126,19 @@ export function useGameStream(): GameStreamState & GameStreamActions {
       const es = new EventSource(url);
       eventSourceRef.current = es;
 
-      // Connection metadata (new viewer only — contains runId + startIndex)
+      // Connection metadata (new viewer only — contains runId + startIndex + mode)
       es.addEventListener("meta", (e) => {
         const data = JSON.parse(e.data) as {
-          runId: string;
+          runId: string | null;
           startIndex: number;
+          mode?: "live" | "replay";
         };
         runIdRef.current = data.runId;
         streamPositionRef.current = data.startIndex;
+        if (data.mode) {
+          setMode(data.mode);
+          modeRef.current = data.mode;
+        }
       });
 
       es.addEventListener("gameId", (e) => {
@@ -271,6 +281,14 @@ export function useGameStream(): GameStreamState & GameStreamActions {
         )
           return;
 
+        // Replay ended — auto-reconnect to get next game (replay or live)
+        if (modeRef.current === "replay" && statusRef.current === "between-games") {
+          retryTimerRef.current = setTimeout(() => {
+            connectRef.current?.("/api/game/stream");
+          }, RETRY_DELAY_MS);
+          return;
+        }
+
         // Auto-reconnect with WDK stream position
         const rid = runIdRef.current;
         const pos = streamPositionRef.current;
@@ -312,6 +330,8 @@ export function useGameStream(): GameStreamState & GameStreamActions {
       setCurrentIndex(0);
       setAutoFollow(true);
       setGameId(null);
+      setMode(null);
+      modeRef.current = null;
       gameIdRef.current = null;
       runIdRef.current = null;
       streamPositionRef.current = 0;
@@ -376,6 +396,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
     autoFollow,
     streamingThinking,
     streamingAnswer,
+    mode,
     reconnect,
     goTo,
     goToLatest,

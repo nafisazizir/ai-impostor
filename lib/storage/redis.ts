@@ -82,3 +82,47 @@ export async function listRecentGameSummaries(
 export async function getGameCount(): Promise<number> {
   return redis().zcard(INDEX_KEY);
 }
+
+export async function getRandomPersistedGame(): Promise<PersistedGame | null> {
+  const count = await redis().zcard(INDEX_KEY);
+  if (count === 0) return null;
+  const randomIndex = Math.floor(Math.random() * count);
+  const ids = await redis().zrange<string[]>(INDEX_KEY, randomIndex, randomIndex);
+  if (ids.length === 0) return null;
+  return getPersistedGame(ids[0]);
+}
+
+// ─── Spectator presence (for on-demand mode) ────────────────────────────────
+
+const SPECTATOR_PREFIX = `${PREFIX}:spectators`;
+const SPECTATOR_TTL_SECONDS = 60;
+
+export async function refreshSpectatorPresence(connectionId: string): Promise<void> {
+  await redis().set(`${SPECTATOR_PREFIX}:${connectionId}`, "1", { ex: SPECTATOR_TTL_SECONDS });
+}
+
+export async function removeSpectatorPresence(connectionId: string): Promise<void> {
+  await redis().del(`${SPECTATOR_PREFIX}:${connectionId}`);
+}
+
+export async function getSpectatorCount(): Promise<number> {
+  const r = redis();
+  const keys = await r.keys(`${SPECTATOR_PREFIX}:*`);
+  return keys.length;
+}
+
+// ─── Live game flag ──────────────────────────────────────────────────────────
+
+const LIVE_GAME_KEY = `${PREFIX}:liveGame`;
+
+export async function setLiveGameId(gameId: string): Promise<void> {
+  await redis().set(LIVE_GAME_KEY, gameId);
+}
+
+export async function clearLiveGameId(): Promise<void> {
+  await redis().del(LIVE_GAME_KEY);
+}
+
+export async function getLiveGameId(): Promise<string | null> {
+  return redis().get<string>(LIVE_GAME_KEY);
+}
