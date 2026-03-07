@@ -110,12 +110,6 @@ export function GameHeader({
         <span className="text-muted-foreground/60 font-mono text-xs">
           impostor
         </span>
-        <Link
-          href="/history"
-          className="text-muted-foreground/40 hover:text-muted-foreground mt-1 font-mono text-[10px] transition-colors"
-        >
-          History
-        </Link>
       </div>
     </header>
   );

@@ -20,6 +20,7 @@ import { GameHeader } from "@/components/game/game-header";
 import { SeatRing } from "@/components/game/seat-ring";
 import { ThinkingPanel } from "@/components/game/thinking-panel";
 import { ThinkingPanelToggle } from "@/components/game/thinking-panel-toggle";
+import Link from "next/link";
 
 type Props = { mode: "mock"; snapshots: MockSnapshot[] } | { mode: "live" };
 
@@ -152,7 +153,6 @@ function SpectatorShell({
         <GameHeader state={state} status={status} />
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
-
           {status === "error" && (
             <>
               <p className="text-sm text-red-400">
@@ -196,6 +196,21 @@ function SpectatorShell({
               )}
             </>
           )}
+        </div>
+
+        <div className="text-muted-foreground/50 flex flex-row items-center justify-end gap-4 p-2 font-mono text-xs tracking-tight">
+          <Link
+            href="/history"
+            className="hover:text-muted-foreground transition-colors duration-200"
+          >
+            history
+          </Link>
+          <Link
+            href="https://x.com/nafisazizir"
+            className="hover:text-muted-foreground transition-colors duration-200"
+          >
+            @nafisazizir
+          </Link>
         </div>
       </div>
 
