@@ -224,15 +224,38 @@ export function playerSystemPrompt(state: GameState, player: SeatNumber): string
           : state.wordPair.impostorWord;
       lines.push(`YOUR WORD: "${word}"`);
       lines.push("");
+      lines.push("ABSOLUTE RULES:");
+      lines.push(
+        "- NEVER say, quote, or spell out your word in any phase (clues, discussion, or voting).",
+      );
+      lines.push(
+        "- NEVER directly name the category your word belongs to (e.g., don't say \"it's a fruit\").",
+      );
+      lines.push(
+        "- Violating these rules means instant exposure — treat your word as top secret.",
+      );
+      lines.push("");
       lines.push(
         "You do NOT know if your word is the majority word or the different word.",
       );
       lines.push(
         "Your goal is to figure out whether you are in the majority or the minority by paying close attention to other players' clues.",
       );
+      lines.push("");
+      lines.push("CLUE STRATEGY:");
       lines.push(
-        "Give clues that hint at your word without saying it directly — this helps you find allies who share your word.",
+        "- Your clue should be INDIRECT and LATERAL — relate to a quality, memory, experience, or association rather than a defining characteristic.",
       );
+      lines.push(
+        '- BAD clue for "apple": "red fruit" (too obvious, Mr. White instantly knows).',
+      );
+      lines.push(
+        '- GOOD clue for "apple": "gravity" (Newton\'s apple — recognizable to allies, cryptic to outsiders).',
+      );
+      lines.push(
+        "- The more obvious your clue, the easier it is for Mr. White to deduce the word and win. Balance subtlety with recognizability.",
+      );
+      lines.push("");
       lines.push(
         "Watch for players whose clues seem slightly off from yours — they might have the other word, or they could be Mr. White bluffing.",
       );
@@ -252,7 +275,13 @@ export function playerSystemPrompt(state: GameState, player: SeatNumber): string
         "Listen carefully to other players' clues to deduce what the words might be.",
       );
       lines.push(
-        "Give clues that sound plausible based on what others have said. Don't be too specific or too vague.",
+        "Give clues that are INDIRECT and LATERAL — just like other players do. Use abstract associations, tangential qualities, or vague impressions based on what you've heard.",
+      );
+      lines.push(
+        "Do NOT be overly generic or vague — that stands out. Match the style and confidence level of other players' clues so you blend in.",
+      );
+      lines.push(
+        "In discussion, talk about clue patterns and player behavior — never admit you don't have a word.",
       );
       break;
   }
@@ -278,8 +307,10 @@ export function clueUserPrompt(state: GameState, player: SeatNumber): string {
   return `${context}
 
 It's the clue phase. Give a short word or phrase as your clue.
-- Keep it brief (1-5 words).
-- Hint at your word without saying it directly.
+- Keep it brief (1-3 words).
+- Your clue must be INDIRECT — use lateral associations, personal angles, or abstract qualities.
+- Do NOT use defining characteristics, category names, or obvious synonyms of your word.
+- Think: "Would this clue let someone who doesn't know the word figure it out?" If yes, be more subtle.
 - Do not repeat a clue you or anyone else has already given.`;
 }
 
@@ -290,7 +321,9 @@ export function discussionUserPrompt(state: GameState, player: SeatNumber): stri
 
 It's the discussion phase (pass ${state.discussionPass}). Share your thoughts on who might be suspicious.
 - Keep your message concise (1-3 sentences).
-- Reference specific clues or behaviors that seem off or aligned with yours.
+- NEVER reveal, quote, or directly reference your word or its category.
+- Discuss by comparing clue PATTERNS and behaviors, not by referencing words.
+- Say things like "Player 3's clue feels aligned with mine" or "Player 5 seems to be describing something different" — without revealing what YOUR word is.
 - Try to figure out who shares your word and who doesn't.`;
 }
 
