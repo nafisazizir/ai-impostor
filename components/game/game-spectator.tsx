@@ -32,6 +32,7 @@ export function GameSpectator() {
     streamingAnswer,
     mode,
     reconnect,
+    gameId,
   } = useGameStream();
 
   const snapshot: GameSnapshot | undefined = snapshots[currentIndex];
@@ -43,6 +44,7 @@ export function GameSpectator() {
 
   return (
     <SpectatorShell
+      gameId={gameId}
       state={state}
       activeSeat={activeSeat}
       thinking={thinking}
@@ -71,6 +73,7 @@ function deriveShellStatus(
 // ─── Shared shell ─────────────────────────────────────────────────────────────
 
 type SpectatorShellProps = {
+  gameId: string | null;
   state?: GameState;
   activeSeat: SeatNumber | null;
   thinking: ThinkingEntry[];
@@ -83,6 +86,7 @@ type SpectatorShellProps = {
 };
 
 function SpectatorShell({
+  gameId,
   state,
   activeSeat,
   thinking,
@@ -108,7 +112,7 @@ function SpectatorShell({
     <div className="relative flex h-screen flex-col md:flex-row">
       {/* Left column: header + game area */}
       <div className="flex min-h-0 flex-1 flex-col">
-        <GameHeader state={state} status={status} />
+        <GameHeader key={gameId ?? undefined} state={state} status={status} />
 
         <main id="main-content" className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6 lg:p-8">
           {status === "error" && (
