@@ -59,6 +59,14 @@ type ResolutionResult = PhaseResult & {
   eliminatedSeat: SeatNumber | null;
 };
 
+type PlayerStepResult = {
+  state: GameState;
+  thinkingEntry: ThinkingEntry;
+  nextSnapshotIndex: number;
+  eventsWritten: number;
+  usageDelta: GameTokenUsage;
+};
+
 // ─── Stream writing helper ───────────────────────────────────────────────────
 
 async function withWriter(
@@ -242,224 +250,220 @@ async function setupStep(
   return { state, nextSnapshotIndex: 1, eventsWritten };
 }
 
-async function cluePhaseStep(
+async function cluePlayerStep(
   state: GameState,
   priorThinking: ThinkingEntry[],
   snapshotIndex: number,
-): Promise<PhaseResult> {
+  seat: SeatNumber,
+): Promise<PlayerStepResult> {
   "use step";
 
   let currentState = state;
   let idx = snapshotIndex;
   const allThinking = [...priorThinking];
-  const newThinking: ThinkingEntry[] = [];
-  const aliveSeats = orderedAliveSeats(currentState);
-  let phaseUsage = emptyGameTokenUsage();
-
-  console.log(`[${currentState.gameId}] Clue phase (${aliveSeats.length} players)`);
+  const prevLen = allThinking.length;
+  let usageDelta = emptyGameTokenUsage();
 
   const eventsWritten = await withWriter(async (emit) => {
-    for (const seat of aliveSeats) {
-      const prevLen = allThinking.length;
+    emit({
+      kind: "thinking:start",
+      seat,
+      phase: currentState.currentPhase,
+      round: currentState.currentRound,
+    });
+    const result = await withStreamedAction(
+      emit,
+      seat,
+      "clue",
+      (onThinking, onAnswer) =>
+        streamClue(currentState, seat, onThinking, onAnswer),
+      { clue: "Interesting" },
+      "Interesting",
+      currentState.gameId,
+      "Clue generation",
+    );
 
-      emit({
-        kind: "thinking:start",
-        seat,
-        phase: currentState.currentPhase,
-        round: currentState.currentRound,
-      });
-      const result = await withStreamedAction(
-        emit,
-        seat,
-        "clue",
-        (onThinking, onAnswer) =>
-          streamClue(currentState, seat, onThinking, onAnswer),
-        { clue: "Interesting" },
-        "Interesting",
-        currentState.gameId,
-        "Clue generation",
-      );
+    emit({ kind: "thinking:end", actionSummary: result.actionSummary });
+    usageDelta = accumulateUsage(usageDelta, PLAYERS[seat].gatewayId, result.usage);
 
-      emit({ kind: "thinking:end", actionSummary: result.actionSummary });
-      phaseUsage = accumulateUsage(phaseUsage, PLAYERS[seat].gatewayId, result.usage);
+    const entry = buildThinkingEntry(seat, currentState, result);
+    allThinking.push(entry);
 
-      const entry = buildThinkingEntry(seat, currentState, result);
-      newThinking.push(entry);
-      allThinking.push(entry);
+    currentState = submitClue(currentState, { seat, text: result.output.clue });
+    console.log(`[${currentState.gameId}]   Player ${seat}: "${result.output.clue}"`);
 
-      currentState = submitClue(currentState, { seat, text: result.output.clue });
-      console.log(`[${currentState.gameId}]   Player ${seat}: "${result.output.clue}"`);
-
-      emit({
-        kind: "snapshot",
-        snapshot: buildSnapshot(
-          idx++,
-          `${playerName(seat)} gave clue`,
-          currentState,
-          allThinking,
-          prevLen,
-        ),
-      });
-    }
+    emit({
+      kind: "snapshot",
+      snapshot: buildSnapshot(
+        idx++,
+        `${playerName(seat)} gave clue`,
+        currentState,
+        allThinking,
+        prevLen,
+      ),
+    });
   });
 
-  return { state: currentState, newThinking, nextSnapshotIndex: idx, eventsWritten, usageDelta: phaseUsage };
+  return {
+    state: currentState,
+    thinkingEntry: allThinking[allThinking.length - 1],
+    nextSnapshotIndex: idx,
+    eventsWritten,
+    usageDelta,
+  };
 }
 
-async function discussionPhaseStep(
+async function discussionPlayerStep(
   state: GameState,
   priorThinking: ThinkingEntry[],
   snapshotIndex: number,
+  seat: SeatNumber,
   pass: number,
   maxPasses: number,
-): Promise<PhaseResult> {
+): Promise<PlayerStepResult> {
   "use step";
 
   let currentState = state;
   let idx = snapshotIndex;
   const allThinking = [...priorThinking];
-  const newThinking: ThinkingEntry[] = [];
-  const aliveSeats = orderedAliveSeats(currentState);
-  let phaseUsage = emptyGameTokenUsage();
-
-  console.log(
-    `[${currentState.gameId}] Discussion pass ${pass} (${aliveSeats.length} players)`,
-  );
+  const prevLen = allThinking.length;
+  let usageDelta = emptyGameTokenUsage();
 
   const eventsWritten = await withWriter(async (emit) => {
-    for (const seat of aliveSeats) {
-      const prevLen = allThinking.length;
+    emit({
+      kind: "thinking:start",
+      seat,
+      phase: currentState.currentPhase,
+      round: currentState.currentRound,
+      pass,
+    });
 
-      emit({
-        kind: "thinking:start",
-        seat,
-        phase: currentState.currentPhase,
-        round: currentState.currentRound,
-        pass,
-      });
+    const result = await withStreamedAction(
+      emit,
+      seat,
+      "discussion",
+      (onThinking, onAnswer) =>
+        streamDiscussionMessage(currentState, seat, onThinking, onAnswer),
+      { message: "I need more time to think about this." },
+      "I need more time to think about this.",
+      currentState.gameId,
+      "Discussion",
+    );
 
-      const result = await withStreamedAction(
-        emit,
-        seat,
-        "discussion",
-        (onThinking, onAnswer) =>
-          streamDiscussionMessage(currentState, seat, onThinking, onAnswer),
-        { message: "I need more time to think about this." },
-        "I need more time to think about this.",
-        currentState.gameId,
-        "Discussion",
-      );
+    emit({ kind: "thinking:end", actionSummary: result.actionSummary });
+    usageDelta = accumulateUsage(usageDelta, PLAYERS[seat].gatewayId, result.usage);
 
-      emit({ kind: "thinking:end", actionSummary: result.actionSummary });
-      phaseUsage = accumulateUsage(phaseUsage, PLAYERS[seat].gatewayId, result.usage);
+    const entry = buildThinkingEntry(seat, currentState, result, pass);
+    allThinking.push(entry);
 
-      const entry = buildThinkingEntry(seat, currentState, result, pass);
-      newThinking.push(entry);
-      allThinking.push(entry);
+    currentState = submitDiscussionMessage(
+      currentState,
+      { seat, text: result.output.message },
+      maxPasses,
+    );
+    console.log(
+      `[${currentState.gameId}]   Player ${seat}: "${result.output.message}"`,
+    );
 
-      currentState = submitDiscussionMessage(
+    emit({
+      kind: "snapshot",
+      snapshot: buildSnapshot(
+        idx++,
+        `${playerName(seat)} discussed`,
         currentState,
-        { seat, text: result.output.message },
-        maxPasses,
-      );
-      console.log(
-        `[${currentState.gameId}]   Player ${seat}: "${result.output.message}"`,
-      );
-
-      emit({
-        kind: "snapshot",
-        snapshot: buildSnapshot(
-          idx++,
-          `${playerName(seat)} discussed`,
-          currentState,
-          allThinking,
-          prevLen,
-        ),
-      });
-    }
+        allThinking,
+        prevLen,
+      ),
+    });
   });
 
-  return { state: currentState, newThinking, nextSnapshotIndex: idx, eventsWritten, usageDelta: phaseUsage };
+  return {
+    state: currentState,
+    thinkingEntry: allThinking[allThinking.length - 1],
+    nextSnapshotIndex: idx,
+    eventsWritten,
+    usageDelta,
+  };
 }
 
-async function votePhaseStep(
+async function votePlayerStep(
   state: GameState,
   priorThinking: ThinkingEntry[],
   snapshotIndex: number,
-): Promise<PhaseResult> {
+  seat: SeatNumber,
+): Promise<PlayerStepResult> {
   "use step";
 
   let currentState = state;
   let idx = snapshotIndex;
   const allThinking = [...priorThinking];
-  const newThinking: ThinkingEntry[] = [];
+  const prevLen = allThinking.length;
+  let usageDelta = emptyGameTokenUsage();
   const aliveSeats = orderedAliveSeats(currentState);
-  let phaseUsage = emptyGameTokenUsage();
-
-  console.log(`[${currentState.gameId}] Vote phase (${aliveSeats.length} players)`);
 
   const eventsWritten = await withWriter(async (emit) => {
-    for (const seat of aliveSeats) {
-      const prevLen = allThinking.length;
+    emit({
+      kind: "thinking:start",
+      seat,
+      phase: currentState.currentPhase,
+      round: currentState.currentRound,
+    });
 
-      emit({
-        kind: "thinking:start",
+    let result: ActionResult<{ targetPlayer: number }>;
+
+    try {
+      result = await streamVote(
+        currentState,
         seat,
-        phase: currentState.currentPhase,
-        round: currentState.currentRound,
-      });
-
-      let result: ActionResult<{ targetPlayer: number }>;
-
-      try {
-        result = await streamVote(
-          currentState,
-          seat,
-          (delta) => emit({ kind: "thinking:delta", text: delta }),
-        );
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        console.error(`[${currentState.gameId}] P${seat} vote failed: ${msg}`);
-
-        const validTargets = aliveSeats.filter((s) => s !== seat);
-        const fallbackTarget = validTargets[Math.floor(Math.random() * validTargets.length)];
-        result = {
-          output: { targetPlayer: fallbackTarget },
-          reasoning: "(fallback: AI generation failed)",
-          actionSummary: "Vote failed — used random fallback",
-          usage: emptyCallUsage(),
-        };
-      }
-
-      emit({ kind: "thinking:end", actionSummary: result.actionSummary });
-      phaseUsage = accumulateUsage(phaseUsage, PLAYERS[seat].gatewayId, result.usage);
-
-      const entry = buildThinkingEntry(seat, currentState, result);
-      newThinking.push(entry);
-      allThinking.push(entry);
-
-      currentState = submitVote(currentState, {
-        voterSeat: seat,
-        targetSeat: result.output.targetPlayer as SeatNumber,
-      });
-      console.log(
-        `[${currentState.gameId}]   Player ${seat} voted for Player ${result.output.targetPlayer}`,
+        (delta) => emit({ kind: "thinking:delta", text: delta }),
       );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`[${currentState.gameId}] P${seat} vote failed: ${msg}`);
 
-      emit({
-        kind: "snapshot",
-        snapshot: buildSnapshot(
-          idx++,
-          `${playerName(seat)} voted`,
-          currentState,
-          allThinking,
-          prevLen,
-        ),
-      });
+      const validTargets = aliveSeats.filter((s) => s !== seat);
+      const fallbackTarget = validTargets[Math.floor(Math.random() * validTargets.length)];
+      result = {
+        output: { targetPlayer: fallbackTarget },
+        reasoning: "(fallback: AI generation failed)",
+        actionSummary: "Vote failed — used random fallback",
+        usage: emptyCallUsage(),
+      };
     }
+
+    emit({ kind: "thinking:end", actionSummary: result.actionSummary });
+    usageDelta = accumulateUsage(usageDelta, PLAYERS[seat].gatewayId, result.usage);
+
+    const entry = buildThinkingEntry(seat, currentState, result);
+    allThinking.push(entry);
+
+    currentState = submitVote(currentState, {
+      voterSeat: seat,
+      targetSeat: result.output.targetPlayer as SeatNumber,
+    });
+    console.log(
+      `[${currentState.gameId}]   Player ${seat} voted for Player ${result.output.targetPlayer}`,
+    );
+
+    emit({
+      kind: "snapshot",
+      snapshot: buildSnapshot(
+        idx++,
+        `${playerName(seat)} voted`,
+        currentState,
+        allThinking,
+        prevLen,
+      ),
+    });
   });
 
-  return { state: currentState, newThinking, nextSnapshotIndex: idx, eventsWritten, usageDelta: phaseUsage };
+  return {
+    state: currentState,
+    thinkingEntry: allThinking[allThinking.length - 1],
+    nextSnapshotIndex: idx,
+    eventsWritten,
+    usageDelta,
+  };
 }
 
 async function resolutionStep(
@@ -700,36 +704,46 @@ export async function gameLoopWorkflow() {
       roundCount++;
 
       // --- Clue phase ---
-      const clue = await cluePhaseStep(state, thinking, snapshotIndex);
-      state = clue.state;
-      thinking = [...thinking, ...clue.newThinking];
-      snapshotIndex = clue.nextSnapshotIndex;
-      streamOffset += clue.eventsWritten;
-      gameUsage = mergeGameUsage(gameUsage, clue.usageDelta);
+      {
+        const aliveSeats = orderedAliveSeats(state);
+        console.log(`[${state.gameId}] Clue phase (${aliveSeats.length} players)`);
+        for (const seat of aliveSeats) {
+          const r = await cluePlayerStep(state, thinking, snapshotIndex, seat);
+          state = r.state;
+          thinking = [...thinking, r.thinkingEntry];
+          snapshotIndex = r.nextSnapshotIndex;
+          streamOffset += r.eventsWritten;
+          gameUsage = mergeGameUsage(gameUsage, r.usageDelta);
+        }
+      }
 
       // --- Discussion phase (multiple passes) ---
       for (let pass = 1; pass <= config.maxDiscussionPasses; pass++) {
-        const disc = await discussionPhaseStep(
-          state,
-          thinking,
-          snapshotIndex,
-          pass,
-          config.maxDiscussionPasses,
-        );
-        state = disc.state;
-        thinking = [...thinking, ...disc.newThinking];
-        snapshotIndex = disc.nextSnapshotIndex;
-        streamOffset += disc.eventsWritten;
-        gameUsage = mergeGameUsage(gameUsage, disc.usageDelta);
+        const aliveSeats = orderedAliveSeats(state);
+        console.log(`[${state.gameId}] Discussion pass ${pass} (${aliveSeats.length} players)`);
+        for (const seat of aliveSeats) {
+          const r = await discussionPlayerStep(state, thinking, snapshotIndex, seat, pass, config.maxDiscussionPasses);
+          state = r.state;
+          thinking = [...thinking, r.thinkingEntry];
+          snapshotIndex = r.nextSnapshotIndex;
+          streamOffset += r.eventsWritten;
+          gameUsage = mergeGameUsage(gameUsage, r.usageDelta);
+        }
       }
 
       // --- Vote phase ---
-      const vote = await votePhaseStep(state, thinking, snapshotIndex);
-      state = vote.state;
-      thinking = [...thinking, ...vote.newThinking];
-      snapshotIndex = vote.nextSnapshotIndex;
-      streamOffset += vote.eventsWritten;
-      gameUsage = mergeGameUsage(gameUsage, vote.usageDelta);
+      {
+        const aliveSeats = orderedAliveSeats(state);
+        console.log(`[${state.gameId}] Vote phase (${aliveSeats.length} players)`);
+        for (const seat of aliveSeats) {
+          const r = await votePlayerStep(state, thinking, snapshotIndex, seat);
+          state = r.state;
+          thinking = [...thinking, r.thinkingEntry];
+          snapshotIndex = r.nextSnapshotIndex;
+          streamOffset += r.eventsWritten;
+          gameUsage = mergeGameUsage(gameUsage, r.usageDelta);
+        }
+      }
 
       // --- Resolution ---
       const res = await resolutionStep(state, thinking, snapshotIndex);
