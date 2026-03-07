@@ -133,16 +133,17 @@ const REASONING_PLAYERS: Record<SeatNumber, PlayerConfig> = {
     },
   },
   6: {
-    provider: "meta",
-    model: "llama-4-maverick",
-    logo: MetaIcon,
-    gatewayId: "meta/llama-4-maverick",
+    provider: "openai",
+    model: "gpt-oss-120b",
+    logo: OpenAIIcon,
+    gatewayId: "openai/gpt-oss-120b",
     providerOptions: {},
   },
 };
 
 const lineup: PlayerLineup =
-  (process.env.NEXT_PUBLIC_PLAYER_LINEUP as PlayerLineup | undefined) === "reasoning"
+  (process.env.NEXT_PUBLIC_PLAYER_LINEUP as PlayerLineup | undefined) ===
+  "reasoning"
     ? "reasoning"
     : "budget";
 
@@ -171,4 +172,3 @@ export function seatForName(name: string): SeatNumber {
   }
   return seat;
 }
-
