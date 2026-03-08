@@ -67,6 +67,11 @@ export function useGameStream(): GameStreamState & GameStreamActions {
 
   const streamingThinkingRef = useRef<StreamingThinking | null>(null);
   const streamingAnswerRef = useRef<StreamingAnswer | null>(null);
+  const pendingAnswerRef = useRef<{
+    data: { seat: SeatNumber; kind: string };
+    chunks: string[];
+    ended: boolean;
+  } | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const snapshotsRef = useRef<GameSnapshot[]>([]);
   const gameIdRef = useRef<string | null>(null);
@@ -150,6 +155,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
   const clearStreamingState = useCallback(() => {
     typewriter.start();
     answerTypewriter.start();
+    pendingAnswerRef.current = null;
     streamingThinkingRef.current = null;
     setStreamingThinking(null);
     streamingAnswerRef.current = null;
@@ -290,15 +296,40 @@ export function useGameStream(): GameStreamState & GameStreamActions {
           seat: SeatNumber;
           kind: string;
         };
-        answerTypewriter.start();
-        const entry: StreamingAnswer = {
-          seat: data.seat,
-          kind: data.kind,
-          text: "",
-          isStreaming: true,
-        };
-        streamingAnswerRef.current = entry;
-        setStreamingAnswer({ ...entry });
+        // Buffer answer and gate on thinking typewriter completion
+        pendingAnswerRef.current = { data, chunks: [], ended: false };
+        typewriter.onComplete(() => {
+          const pending = pendingAnswerRef.current;
+          if (!pending) return; // cleared by snapshot/reset
+          pendingAnswerRef.current = null;
+          answerTypewriter.start();
+          const entry: StreamingAnswer = {
+            seat: pending.data.seat,
+            kind: pending.data.kind,
+            text: "",
+            isStreaming: true,
+          };
+          streamingAnswerRef.current = entry;
+          setStreamingAnswer({ ...entry });
+          // Flush buffered chunks
+          for (const chunk of pending.chunks) {
+            answerTypewriter.push(chunk);
+          }
+          // If answer:end already arrived, register completion handler
+          if (pending.ended) {
+            answerTypewriter.onComplete(() => {
+              const cur = streamingAnswerRef.current;
+              if (!cur) return;
+              cur.isStreaming = false;
+              setStreamingAnswer({ ...cur });
+              const thinkCur = streamingThinkingRef.current;
+              if (thinkCur && thinkCur.isStreaming) {
+                thinkCur.isStreaming = false;
+                setStreamingThinking({ ...thinkCur });
+              }
+            });
+          }
+        });
       });
 
       es.addEventListener("answer:delta", (e) => {
@@ -306,6 +337,11 @@ export function useGameStream(): GameStreamState & GameStreamActions {
         streamPositionRef.current++;
         if (catchingUpRef.current) return;
         const data = JSON.parse(e.data) as { text: string };
+        // Buffer if thinking typewriter hasn't finished yet
+        if (pendingAnswerRef.current) {
+          pendingAnswerRef.current.chunks.push(data.text);
+          return;
+        }
         if (!streamingAnswerRef.current) return;
         answerTypewriter.push(data.text);
       });
@@ -314,6 +350,11 @@ export function useGameStream(): GameStreamState & GameStreamActions {
         resetCatchUpTimer();
         streamPositionRef.current++;
         if (catchingUpRef.current) return;
+        // If still buffered (thinking not done), just mark ended
+        if (pendingAnswerRef.current) {
+          pendingAnswerRef.current.ended = true;
+          return;
+        }
         const current = streamingAnswerRef.current;
         if (!current) return;
         answerTypewriter.onComplete(() => {
