@@ -102,14 +102,14 @@ function SpectatorShell({
 
   if (status === "connecting" && !state) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-dvh items-center justify-center">
         <DotMatrixLoader />
       </div>
     );
   }
 
   return (
-    <div className="relative flex h-screen flex-col md:flex-row">
+    <div className="relative flex h-dvh flex-col md:flex-row">
       {/* Left column: header + game area */}
       <div className="flex min-h-0 flex-1 flex-col">
         <GameHeader key={gameId ?? undefined} state={state} status={status} />

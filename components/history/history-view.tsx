@@ -59,7 +59,7 @@ export function HistoryView({
   }
 
   return (
-    <div className="relative flex h-screen flex-col md:flex-row">
+    <div className="relative flex h-dvh flex-col md:flex-row">
       <div className="hidden md:block">
         <GameListSidebar
           initialGames={initialGames}
