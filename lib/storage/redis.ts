@@ -92,6 +92,25 @@ export async function getRandomPersistedGame(): Promise<PersistedGame | null> {
   return getPersistedGame(ids[0]);
 }
 
+// ─── Active replay tracking ─────────────────────────────────────────────────
+
+const REPLAY_RUN_KEY = `${PREFIX}:replay:runId`;
+const REPLAY_TTL_SECONDS = 900; // 15 minutes
+
+export async function setActiveReplayRunId(runId: string): Promise<boolean> {
+  // NX = set-if-not-exists — prevents race when multiple viewers arrive simultaneously
+  const result = await redis().set(REPLAY_RUN_KEY, runId, { nx: true, ex: REPLAY_TTL_SECONDS });
+  return result === "OK";
+}
+
+export async function getActiveReplayRunId(): Promise<string | null> {
+  return redis().get<string>(REPLAY_RUN_KEY);
+}
+
+export async function clearActiveReplayRunId(): Promise<void> {
+  await redis().del(REPLAY_RUN_KEY);
+}
+
 // ─── Spectator presence (for on-demand mode) ────────────────────────────────
 
 const SPECTATOR_PREFIX = `${PREFIX}:spectators`;

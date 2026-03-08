@@ -45,13 +45,13 @@ function chunkText(text: string, chunkSize: number): string[] {
 
 type ActionKind = "clue" | "discussion" | "mr_white_guess";
 
-function phaseToActionKind(phase: string): ActionKind {
+export function phaseToActionKind(phase: string): ActionKind {
   if (phase === "clue") return "clue";
   if (phase === "elimination") return "mr_white_guess";
   return "discussion";
 }
 
-function getAnswerText(state: GameState, entry: ThinkingEntry): string {
+export function getAnswerText(state: GameState, entry: ThinkingEntry): string {
   const { seat, phase, round, pass } = entry;
 
   if (phase === "clue") {
@@ -104,7 +104,7 @@ function inferMaxDiscussionPasses(events: GameEvent[]): number {
  *   - resolutionSnapshots: snapshots for resolution events (round_resolved,
  *     player_eliminated) that should be emitted between action groups
  */
-function reconstructStates(finalState: GameState): {
+export function reconstructStates(finalState: GameState): {
   initialState: GameState;
   actionStates: GameState[];
   resolutionSnapshots: { afterActionIndex: number; state: GameState; label: string }[];
@@ -419,7 +419,7 @@ async function emitReplay(
   enqueue({ kind: "game:finished" });
 }
 
-function buildSnapshotLabel(entry: ThinkingEntry): string {
+export function buildSnapshotLabel(entry: ThinkingEntry): string {
   const name = playerName(entry.seat as SeatNumber);
   switch (entry.phase) {
     case "clue":

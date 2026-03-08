@@ -6,12 +6,11 @@ import {
   getGameCount,
   getGameStartIndex,
   getLiveGameId,
-  getRandomPersistedGame,
   refreshSpectatorPresence,
   removeSpectatorPresence,
 } from "@/lib/storage/redis";
 import { ensureWorkflowRunning } from "@/lib/workflows/ensure-running";
-import { createReplayStream } from "@/lib/game/replay";
+import { ensureReplayRunning } from "@/lib/workflows/ensure-replay";
 import type { GameStreamEvent } from "@/lib/workflows/types";
 
 export const maxDuration = 300;
@@ -116,18 +115,79 @@ export async function GET(request: Request) {
       await clearLiveGameId();
     }
 
-    const storedGame = await getRandomPersistedGame();
-    if (storedGame) {
+    const replayResult = await ensureReplayRunning();
+    if (replayResult) {
       if (isOnDemand) {
         await refreshSpectatorPresence(connectionId);
-        // Kick off the workflow so a live game starts in the background
+        // Kick off the live workflow so a real game starts in the background
         ensureWorkflowRunning().catch(() => {});
       }
 
       console.log(
-        `[stream] serving replay — gameId=${storedGame.summary.gameId}, thinkingEntries=${storedGame.thinking.length}`,
+        `[stream] serving shared replay — runId=${replayResult.runId}`,
       );
-      return serveReplayStream(request, encoder, storedGame, connectionId, isOnDemand);
+
+      // Use the shared WDK replay — same path as live games
+      runId = replayResult.runId;
+      startIndex = 0;
+
+      const run = getRun(runId);
+      const wdkReadable = run.getReadable<GameStreamEvent>({ startIndex });
+      const reader = wdkReadable.getReader();
+
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(formatSSE("meta", { runId, startIndex: 0, mode: "replay" })),
+          );
+
+          const heartbeat = setInterval(() => {
+            try {
+              controller.enqueue(encoder.encode(":heartbeat\n\n"));
+            } catch {
+              clearInterval(heartbeat);
+            }
+          }, HEARTBEAT_INTERVAL_MS);
+
+          const presenceHeartbeat = isOnDemand
+            ? setInterval(() => {
+                refreshSpectatorPresence(connectionId).catch(() => {});
+              }, PRESENCE_HEARTBEAT_MS)
+            : null;
+
+          const cleanup = () => {
+            clearInterval(heartbeat);
+            if (presenceHeartbeat) clearInterval(presenceHeartbeat);
+            if (isOnDemand) {
+              removeSpectatorPresence(connectionId).catch(() => {});
+            }
+            reader.cancel().catch(() => {});
+            try {
+              controller.close();
+            } catch {
+              // already closed
+            }
+          };
+
+          request.signal.addEventListener("abort", cleanup);
+
+          (async () => {
+            try {
+              while (!request.signal.aborted) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                controller.enqueue(encoder.encode(gameEventToSSE(value, connectionId)));
+              }
+            } catch {
+              // Reader cancelled or stream error
+            } finally {
+              cleanup();
+            }
+          })();
+        },
+      });
+
+      return new Response(stream, { headers: sseHeaders() });
     }
   }
 
@@ -216,73 +276,3 @@ export async function GET(request: Request) {
   return new Response(stream, { headers: sseHeaders() });
 }
 
-// ─── Replay stream ──────────────────────────────────────────────────────────
-
-function serveReplayStream(
-  request: Request,
-  encoder: TextEncoder,
-  game: import("@/lib/game/persisted").PersistedGame,
-  connectionId: string,
-  isOnDemand: boolean,
-): Response {
-  const replayReadable = createReplayStream(game);
-  const replayReader = replayReadable.getReader();
-
-  const stream = new ReadableStream({
-    start(controller) {
-      // Send metadata indicating this is a replay
-      controller.enqueue(
-        encoder.encode(formatSSE("meta", { runId: null, startIndex: 0, mode: "replay" })),
-      );
-
-      // Heartbeat
-      const heartbeat = setInterval(() => {
-        try {
-          controller.enqueue(encoder.encode(":heartbeat\n\n"));
-        } catch {
-          clearInterval(heartbeat);
-        }
-      }, HEARTBEAT_INTERVAL_MS);
-
-      // Presence heartbeat for on-demand mode
-      const presenceHeartbeat = isOnDemand
-        ? setInterval(() => {
-            refreshSpectatorPresence(connectionId).catch(() => {});
-          }, PRESENCE_HEARTBEAT_MS)
-        : null;
-
-      const cleanup = () => {
-        clearInterval(heartbeat);
-        if (presenceHeartbeat) clearInterval(presenceHeartbeat);
-        if (isOnDemand) {
-          removeSpectatorPresence(connectionId).catch(() => {});
-        }
-        replayReader.cancel().catch(() => {});
-        try {
-          controller.close();
-        } catch {
-          // already closed
-        }
-      };
-
-      request.signal.addEventListener("abort", cleanup);
-
-      // Pump replay events → SSE
-      (async () => {
-        try {
-          while (!request.signal.aborted) {
-            const { done, value } = await replayReader.read();
-            if (done) break;
-            controller.enqueue(encoder.encode(gameEventToSSE(value, connectionId)));
-          }
-        } catch {
-          // Reader cancelled or stream error
-        } finally {
-          cleanup();
-        }
-      })();
-    },
-  });
-
-  return new Response(stream, { headers: sseHeaders() });
-}
