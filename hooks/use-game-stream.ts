@@ -80,6 +80,10 @@ export function useGameStream(): GameStreamState & GameStreamActions {
   const streamPositionRef = useRef(0);
   const connectRef = useRef<((url: string) => void) | null>(null);
 
+  // Catch-up detection: skip animations during backfill burst
+  const catchingUpRef = useRef(true);
+  const catchUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const typewriter = useTypewriterBuffer((displayed) => {
     const current = streamingThinkingRef.current;
     if (!current) return;
@@ -94,10 +98,45 @@ export function useGameStream(): GameStreamState & GameStreamActions {
     setStreamingAnswer({ ...current });
   });
 
+  // After 300ms with no events, transition from catch-up to live mode.
+  // During backfill, events arrive within <50ms; live/replay gaps are 800ms+.
+  const resetCatchUpTimer = useCallback(() => {
+    if (catchUpTimerRef.current) clearTimeout(catchUpTimerRef.current);
+    catchUpTimerRef.current = setTimeout(() => {
+      catchingUpRef.current = false;
+      catchUpTimerRef.current = null;
+
+      // Show pending thinking shimmer for current active player
+      const latest = snapshotsRef.current[snapshotsRef.current.length - 1];
+      if (latest && latest.state.currentPhase !== "finished") {
+        const activeSeat = deriveActiveSeat(latest.state);
+        if (activeSeat && !streamingThinkingRef.current) {
+          const pending: StreamingThinking = {
+            seat: activeSeat,
+            phase: latest.state.currentPhase,
+            round: latest.state.currentRound,
+            pass:
+              latest.state.currentPhase === "discussion"
+                ? latest.state.discussionPass
+                : undefined,
+            text: "",
+            isStreaming: true,
+          };
+          streamingThinkingRef.current = pending;
+          setStreamingThinking({ ...pending });
+        }
+      }
+    }, 300);
+  }, []);
+
   const MAX_RETRIES = 3;
   const RETRY_DELAY_MS = 2_000;
 
   const cleanup = useCallback(() => {
+    if (catchUpTimerRef.current) {
+      clearTimeout(catchUpTimerRef.current);
+      catchUpTimerRef.current = null;
+    }
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
@@ -120,6 +159,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
   const connect = useCallback(
     (url: string) => {
       cleanup();
+      catchingUpRef.current = true;
       setStatus("connecting");
       statusRef.current = "connecting";
       setError(null);
@@ -129,6 +169,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
 
       // Connection metadata (new viewer only — contains runId + startIndex + mode)
       es.addEventListener("meta", (e) => {
+        resetCatchUpTimer();
         const data = JSON.parse(e.data) as {
           runId: string | null;
           startIndex: number;
@@ -143,6 +184,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
       });
 
       es.addEventListener("gameId", (e) => {
+        resetCatchUpTimer();
         const data = JSON.parse(e.data) as { gameId: string };
         streamPositionRef.current++;
 
@@ -161,6 +203,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
       });
 
       es.addEventListener("snapshot", (e) => {
+        resetCatchUpTimer();
         streamPositionRef.current++;
         const snapshot = JSON.parse(e.data) as GameSnapshot;
         snapshotsRef.current = [...snapshotsRef.current, snapshot];
@@ -170,21 +213,24 @@ export function useGameStream(): GameStreamState & GameStreamActions {
         clearStreamingState();
 
         // Show pending thinking animation for the next active player
-        const activeSeat = deriveActiveSeat(snapshot.state);
-        if (activeSeat && snapshot.state.currentPhase !== "finished") {
-          const pending: StreamingThinking = {
-            seat: activeSeat,
-            phase: snapshot.state.currentPhase,
-            round: snapshot.state.currentRound,
-            pass:
-              snapshot.state.currentPhase === "discussion"
-                ? snapshot.state.discussionPass
-                : undefined,
-            text: "",
-            isStreaming: true,
-          };
-          streamingThinkingRef.current = pending;
-          setStreamingThinking({ ...pending });
+        // (only during live — during catch-up, resetCatchUpTimer handles this)
+        if (!catchingUpRef.current) {
+          const activeSeat = deriveActiveSeat(snapshot.state);
+          if (activeSeat && snapshot.state.currentPhase !== "finished") {
+            const pending: StreamingThinking = {
+              seat: activeSeat,
+              phase: snapshot.state.currentPhase,
+              round: snapshot.state.currentRound,
+              pass:
+                snapshot.state.currentPhase === "discussion"
+                  ? snapshot.state.discussionPass
+                  : undefined,
+              text: "",
+              isStreaming: true,
+            };
+            streamingThinkingRef.current = pending;
+            setStreamingThinking({ ...pending });
+          }
         }
 
         // Auto-follow: advance to latest
@@ -196,7 +242,9 @@ export function useGameStream(): GameStreamState & GameStreamActions {
       });
 
       es.addEventListener("thinking:start", (e) => {
+        resetCatchUpTimer();
         streamPositionRef.current++;
+        if (catchingUpRef.current) return;
         const data = JSON.parse(e.data) as {
           seat: SeatNumber;
           phase: GamePhase;
@@ -217,21 +265,27 @@ export function useGameStream(): GameStreamState & GameStreamActions {
       });
 
       es.addEventListener("thinking:delta", (e) => {
+        resetCatchUpTimer();
         streamPositionRef.current++;
+        if (catchingUpRef.current) return;
         const data = JSON.parse(e.data) as { text: string };
         if (!streamingThinkingRef.current) return;
         typewriter.push(data.text);
       });
 
       es.addEventListener("thinking:end", () => {
+        resetCatchUpTimer();
         streamPositionRef.current++;
+        if (catchingUpRef.current) return;
         // Don't set actionSummary or isStreaming=false here.
         // actionSummary will render from snapshot data.
         // Shimmer stays active until answer typewriter completes.
       });
 
       es.addEventListener("answer:start", (e) => {
+        resetCatchUpTimer();
         streamPositionRef.current++;
+        if (catchingUpRef.current) return;
         const data = JSON.parse(e.data) as {
           seat: SeatNumber;
           kind: string;
@@ -248,14 +302,18 @@ export function useGameStream(): GameStreamState & GameStreamActions {
       });
 
       es.addEventListener("answer:delta", (e) => {
+        resetCatchUpTimer();
         streamPositionRef.current++;
+        if (catchingUpRef.current) return;
         const data = JSON.parse(e.data) as { text: string };
         if (!streamingAnswerRef.current) return;
         answerTypewriter.push(data.text);
       });
 
       es.addEventListener("answer:end", () => {
+        resetCatchUpTimer();
         streamPositionRef.current++;
+        if (catchingUpRef.current) return;
         const current = streamingAnswerRef.current;
         if (!current) return;
         answerTypewriter.onComplete(() => {
@@ -273,6 +331,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
       });
 
       es.addEventListener("finished", () => {
+        resetCatchUpTimer();
         streamPositionRef.current++;
         // Don't close — the workflow will start the next game
         setStatus("between-games");
@@ -281,6 +340,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
       });
 
       es.addEventListener("error", (e) => {
+        resetCatchUpTimer();
         if (e instanceof MessageEvent && e.data) {
           const data = JSON.parse(e.data) as { message: string };
           setError(data.message);
@@ -326,7 +386,7 @@ export function useGameStream(): GameStreamState & GameStreamActions {
         setError("Connection lost");
       };
     },
-    [cleanup, clearStreamingState, typewriter, answerTypewriter],
+    [cleanup, clearStreamingState, resetCatchUpTimer, typewriter, answerTypewriter],
   );
 
   useEffect(() => {
