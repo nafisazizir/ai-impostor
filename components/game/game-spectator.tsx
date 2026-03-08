@@ -161,13 +161,7 @@ function SpectatorShell({
         </main>
 
         <footer className="text-muted-foreground/50 flex flex-row items-center justify-between gap-4 p-2 font-mono text-xs tracking-tight">
-          <div className="px-2">
-            {mode === "replay" && (
-              <span className="text-muted-foreground/70 uppercase tracking-widest">
-                replay
-              </span>
-            )}
-          </div>
+          <div className="px-2" />
           <div className="flex flex-row items-center gap-4">
           <Link
             href="/history"

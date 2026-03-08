@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { GameSnapshot } from "@/lib/game/snapshot";
 import type { SeatNumber, GamePhase } from "@/lib/game/types";
+import { deriveActiveSeat } from "@/lib/game/ui-helpers";
 import { useTypewriterBuffer } from "@/hooks/use-typewriter-buffer";
 
 export type GameStreamStatus =
@@ -108,8 +109,8 @@ export function useGameStream(): GameStreamState & GameStreamActions {
   }, []);
 
   const clearStreamingState = useCallback(() => {
-    typewriter.flush();
-    answerTypewriter.flush();
+    typewriter.start();
+    answerTypewriter.start();
     streamingThinkingRef.current = null;
     setStreamingThinking(null);
     streamingAnswerRef.current = null;
@@ -165,8 +166,26 @@ export function useGameStream(): GameStreamState & GameStreamActions {
         snapshotsRef.current = [...snapshotsRef.current, snapshot];
         setSnapshots(snapshotsRef.current);
 
-        // Flush any buffered typewriter text, then clear streaming state
+        // Cancel typewriter without flushing to avoid text flash
         clearStreamingState();
+
+        // Show pending thinking animation for the next active player
+        const activeSeat = deriveActiveSeat(snapshot.state);
+        if (activeSeat && snapshot.state.currentPhase !== "finished") {
+          const pending: StreamingThinking = {
+            seat: activeSeat,
+            phase: snapshot.state.currentPhase,
+            round: snapshot.state.currentRound,
+            pass:
+              snapshot.state.currentPhase === "discussion"
+                ? snapshot.state.discussionPass
+                : undefined,
+            text: "",
+            isStreaming: true,
+          };
+          streamingThinkingRef.current = pending;
+          setStreamingThinking({ ...pending });
+        }
 
         // Auto-follow: advance to latest
         const newLength = snapshotsRef.current.length;
@@ -204,17 +223,11 @@ export function useGameStream(): GameStreamState & GameStreamActions {
         typewriter.push(data.text);
       });
 
-      es.addEventListener("thinking:end", (e) => {
+      es.addEventListener("thinking:end", () => {
         streamPositionRef.current++;
-        const data = JSON.parse(e.data) as { actionSummary: string };
-        if (!streamingThinkingRef.current) return;
-        typewriter.onComplete(() => {
-          const cur = streamingThinkingRef.current;
-          if (!cur) return;
-          cur.isStreaming = false;
-          cur.actionSummary = data.actionSummary;
-          setStreamingThinking({ ...cur });
-        });
+        // Don't set actionSummary or isStreaming=false here.
+        // actionSummary will render from snapshot data.
+        // Shimmer stays active until answer typewriter completes.
       });
 
       es.addEventListener("answer:start", (e) => {
@@ -250,6 +263,12 @@ export function useGameStream(): GameStreamState & GameStreamActions {
           if (!cur) return;
           cur.isStreaming = false;
           setStreamingAnswer({ ...cur });
+          // Stop thinking shimmer now that all streaming is complete
+          const thinkCur = streamingThinkingRef.current;
+          if (thinkCur && thinkCur.isStreaming) {
+            thinkCur.isStreaming = false;
+            setStreamingThinking({ ...thinkCur });
+          }
         });
       });
 
